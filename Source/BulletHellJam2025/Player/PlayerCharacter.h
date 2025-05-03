@@ -42,4 +42,5 @@ protected:
 	void OnSPressed();
 	void OnAPressed();
 	void OnDPressed();
+	void OnShiftPressed();
 };

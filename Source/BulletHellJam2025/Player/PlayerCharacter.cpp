@@ -29,7 +29,7 @@ void APlayerCharacter::BeginPlay()
 		Dash(GetActorRightVector());
 	});
 
-	TapHandler->AddListener("LEftDash", [this]() {
+	TapHandler->AddListener("LeftDash", [this]() {
 		Dash(-GetActorRightVector());
 	});
 
@@ -55,6 +55,12 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindKey(EKeys::S, IE_Pressed, this, &APlayerCharacter::OnSPressed);
 	PlayerInputComponent->BindKey(EKeys::A, IE_Pressed, this, &APlayerCharacter::OnAPressed);
 	PlayerInputComponent->BindKey(EKeys::D, IE_Pressed, this, &APlayerCharacter::OnDPressed);
+	PlayerInputComponent->BindKey(EKeys::LeftShift, IE_Pressed, this, &APlayerCharacter::OnShiftPressed);
+}
+
+void APlayerCharacter::OnShiftPressed()
+{
+	Dash(GetLastMovementInputVector());
 }
 
 void APlayerCharacter::OnWPressed()
