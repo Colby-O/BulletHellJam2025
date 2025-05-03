@@ -23,6 +23,8 @@ public:
 protected:
 	UPROPERTY(EditAnywhere)
 	class UCameraComponent* Camera;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	class AGridManager* GridManager;
 
 	class UTapHandler* TapHandler;
 
@@ -35,6 +37,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float DashCooldown = 0.25;
 
+	float Width;
+
 	void MoveForward(float Input);
 	void MoveRight(float Input);
 	void Dash(FVector Direction);
@@ -43,4 +47,5 @@ protected:
 	void OnAPressed();
 	void OnDPressed();
 	void OnShiftPressed();
+	void CheckTile(FVector pos);
 };

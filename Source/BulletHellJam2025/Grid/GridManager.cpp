@@ -10,7 +10,6 @@ AGridManager::AGridManager()
 void AGridManager::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
 void AGridManager::Tick(float DeltaTime)
@@ -22,26 +21,28 @@ void AGridManager::Tick(float DeltaTime)
 void AGridManager::RegisterTile(ATile* Tile)
 {
 	FVector worldPT = Tile->GetActorLocation();
-	FVector2D gridPT = FVector2D(worldPT.X, worldPT.Y);
+	FVector2Int gridPT = WorldToGrid(worldPT);
 	if (!Tiles.Contains(gridPT)) 
 	{
 		Tiles.Add(gridPT, Tile);
 	}
 	Tiles[gridPT] = Tile;
+
+	UE_LOG(LogTemp, Warning, TEXT("World Pos: %s Grid Pos: %s Tile Name: %s"), *Tile->GetActorLocation().ToString(), *gridPT.ToString(), *Tile->GetActorLabel());
 }
 
-FVector2D AGridManager::WorldToGrid(FVector worldPt) const
+FVector2Int AGridManager::WorldToGrid(FVector worldPt) const
 {
 	FVector clamped = FVector(FMath::RoundToInt(worldPt.X) / TileSize, FMath::RoundToInt(worldPt.Y) / TileSize, FMath::RoundToInt(worldPt.Z) / TileSize);
-	return FVector2D(FMath::FloorToInt(clamped.X), FMath::FloorToInt(clamped.Y));
+	return FVector2Int(FMath::FloorToInt(clamped.X), FMath::FloorToInt(clamped.Y));
 }
 
-FVector AGridManager::GridToWorld(FVector2D gridPt) const
+FVector AGridManager::GridToWorld(FVector2Int gridPt) const
 {
 	return FVector(gridPt.X * TileSize, gridPt.Y * TileSize, 0);
 }
 
-ATile* AGridManager::GetTileAt(FVector2D pt) const
+ATile* AGridManager::GetTileAt(FVector2Int pt) const
 {
 	return Tiles.Contains(pt) ? Tiles[pt] : nullptr;
 }

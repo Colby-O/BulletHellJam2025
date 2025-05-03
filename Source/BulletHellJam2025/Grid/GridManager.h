@@ -1,5 +1,6 @@
 #pragma once
 
+#include "BulletHellJam2025/Core/Vector2Int.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "GridManager.generated.h"
@@ -10,7 +11,7 @@ UCLASS()
 class BULLETHELLJAM2025_API AGridManager : public AActor
 {
 	GENERATED_BODY()
-	
+
 public:	
 	AGridManager();
 
@@ -23,18 +24,18 @@ public:
 	void RegisterTile(ATile* Tile);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tiles")
-	TMap<FVector2D, ATile*> Tiles;
+	TMap<FVector2Int, ATile*> Tiles;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int TileSize;
+	int TileSize = 100;
 
 	UFUNCTION(BlueprintCallable, Category = "Tiles")
-	FVector2D WorldToGrid(FVector worldPt) const;
+	FVector2Int WorldToGrid(FVector worldPt) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Tiles")
-	FVector GridToWorld(FVector2D gridPt) const;
+	FVector GridToWorld(FVector2Int gridPt) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Tiles")
-	ATile* GetTileAt(FVector2D pt) const;
+	ATile* GetTileAt(FVector2Int pt) const;
 
 };

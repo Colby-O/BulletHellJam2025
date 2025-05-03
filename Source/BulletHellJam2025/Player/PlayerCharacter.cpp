@@ -2,6 +2,11 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "BulletHellJam2025/Core/TapHandler.h"
+#include "BulletHellJam2025/Grid/GridManager.h"
+#include "BulletHellJam2025/Grid/Tile.h"
+#include "Kismet/GameplayStatics.h"
+#include "BulletHellJam2025/Core/Vector2Int.h"
+#include "Components/CapsuleComponent.h"
 
 APlayerCharacter::APlayerCharacter()
 {
@@ -33,15 +38,26 @@ void APlayerCharacter::BeginPlay()
 		Dash(-GetActorRightVector());
 	});
 
+	UCapsuleComponent* Capsule = GetCapsuleComponent();
+	Width = Capsule->GetScaledCapsuleRadius();
+
+	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
+
 	// Setup for movement parameters
 	GetCharacterMovement()->MaxWalkSpeed = PlayerSpeed;
 	GetCharacterMovement()->JumpZVelocity = JumpForce;
 }
 
+
+
 void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	CheckTile(GetActorLocation());
+	CheckTile(GetActorLocation() + FVector(Width, 0, 0));
+	CheckTile(GetActorLocation() - FVector(Width, 0, 0));
+	CheckTile(GetActorLocation() + FVector(0, Width, 0));
+	CheckTile(GetActorLocation() - FVector(0, Width, 0));
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -61,6 +77,12 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 void APlayerCharacter::OnShiftPressed()
 {
 	Dash(GetLastMovementInputVector());
+}
+
+void APlayerCharacter::CheckTile(FVector pos)
+{
+	ATile* tile = GridManager->GetTileAt(GridManager->WorldToGrid(pos));
+	if (tile != nullptr) tile->TriggerFall();
 }
 
 void APlayerCharacter::OnWPressed()
