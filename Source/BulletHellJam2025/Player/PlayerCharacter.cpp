@@ -81,6 +81,7 @@ void APlayerCharacter::OnShiftPressed()
 
 void APlayerCharacter::CheckTile(FVector pos)
 {
+	if (GetCharacterMovement()->IsFalling()) return;
 	ATile* tile = GridManager->GetTileAt(GridManager->WorldToGrid(pos));
 	if (tile != nullptr) tile->TriggerFall();
 }
