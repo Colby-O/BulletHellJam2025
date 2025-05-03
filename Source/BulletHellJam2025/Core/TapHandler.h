@@ -17,7 +17,6 @@ public:
 
 	void AddListener(FName EventName, TFunction<void()> Callback);
 	void Invoke(FName EventName, UWorld* World);
-
 private:
 	TMap<FName, FTapInfo> Events;
 	float TapDelay;
