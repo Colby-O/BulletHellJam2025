@@ -12,11 +12,15 @@ void ATile::BeginPlay()
 {
 	Super::BeginPlay();
 	Mesh = FindComponentByClass<UStaticMeshComponent>();
-	Mat = Mesh->GetMaterial(0);
+	Mat = Mesh->GetMaterial(1);
     GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
     if (GridManager) GridManager->RegisterTile(this);
 
-	SetColor(FLinearColor::White);
+	UMaterialInstanceDynamic* DynMaterial = UMaterialInstanceDynamic::Create(Mat, this);
+	if (DynMaterial)
+	{
+		DynMaterial->GetVectorParameterValue(FMaterialParameterInfo(TEXT("BaseColor")), DefaultColor);
+	}
 }
 
 void ATile::Tick(float DeltaTime)
@@ -44,7 +48,7 @@ void ATile::ResetTile()
 
 	if (pos.Z >= 0) 
 	{
-		SetColor(FLinearColor::White);
+		SetColor(DefaultColor);
 
 		pos.Z = 0;
 		IsFalling = false;
@@ -75,8 +79,8 @@ void ATile::SetColor(FLinearColor Color)
 
 	if (DynMaterial)
 	{
-		DynMaterial->SetVectorParameterValue("Color", Color);
-		Mesh->SetMaterial(0, DynMaterial);
+		DynMaterial->SetVectorParameterValue("BaseColor", Color);
+		Mesh->SetMaterial(1, DynMaterial);
 	}
 }
 

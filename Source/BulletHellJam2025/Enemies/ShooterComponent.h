@@ -16,6 +16,10 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	float NormalizeAngle360(float Angle);
+
+	float ClampAngle(float Angle, float Min, float Max, bool CanLoop, float Frequency);
+
 public:	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
@@ -28,7 +32,26 @@ public:
 	float FireRate = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float RotSpeed = 0.5;
+	FVector RotSpeed;
+
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool YawLoop;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool PitchLoop;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool RollLoop;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector LoopFrequency;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector RotMin;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector RotMax;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float LifeSpan = 1.0;
@@ -36,5 +59,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FVector> SpawnDirections;
 
+	FRotator RawRotation;
 	FTimerHandle FireTimerHandler;
 };

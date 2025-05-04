@@ -47,5 +47,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite);
 	float FallAmount = 1000;
 
+	FLinearColor DefaultColor;
 	FTimerHandle TimerHandler;
 };

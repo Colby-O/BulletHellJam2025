@@ -28,6 +28,9 @@ protected:
 
 	class UTapHandler* TapHandler;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setup")
+	UStaticMeshComponent* PlayerMesh;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float PlayerSpeed = 1000.0;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -48,4 +51,7 @@ protected:
 	void OnDPressed();
 	void OnShiftPressed();
 	void CheckTile(FVector pos);
+
+public:
+	void OnDeath();
 };

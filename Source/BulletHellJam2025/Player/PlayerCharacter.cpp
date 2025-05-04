@@ -53,6 +53,14 @@ void APlayerCharacter::BeginPlay()
 void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (PlayerMesh && !GetVelocity().IsNearlyZero()) 
+	{
+		FVector Vel = GetVelocity();
+		FRotator Rot = FVector(-Vel.X, -Vel.Y, 0).Rotation();
+		PlayerMesh->SetRelativeRotation(Rot);
+	}
+	if (PlayerMesh) UE_LOG(LogTemp, Log, TEXT("Actor Label: %s"), *PlayerMesh->GetName());
 	CheckTile(GetActorLocation());
 	CheckTile(GetActorLocation() + FVector(Width, 0, 0));
 	CheckTile(GetActorLocation() - FVector(Width, 0, 0));
@@ -86,6 +94,11 @@ void APlayerCharacter::CheckTile(FVector pos)
 	if (tile != nullptr) tile->TriggerFall();
 }
 
+void APlayerCharacter::OnDeath()
+{
+	UGameplayStatics::OpenLevel(this, FName(*GetWorld()->GetName()), false);
+}
+
 void APlayerCharacter::OnWPressed()
 {
 	TapHandler->Invoke("ForwardDash", GetWorld());
@@ -108,13 +121,13 @@ void APlayerCharacter::OnDPressed()
 
 void APlayerCharacter::MoveForward(float Input)
 {
-	FVector Forward = GetActorForwardVector();
+	FVector Forward = Camera->GetForwardVector();
 	AddMovementInput(Forward * Input);
 }
 
 void APlayerCharacter::MoveRight(float Input)
 {
-	FVector Right = GetActorRightVector();
+	FVector Right = Camera->GetRightVector();
 	AddMovementInput(Right * Input);
 }
 
