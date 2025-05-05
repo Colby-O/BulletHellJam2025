@@ -26,7 +26,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Tiles")
 	TMap<FVector2Int, ATile*> Tiles;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
 	int TileSize = 100;
 
 	UFUNCTION(BlueprintCallable, Category = "Tiles")

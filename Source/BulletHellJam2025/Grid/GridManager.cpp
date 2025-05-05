@@ -4,7 +4,6 @@
 AGridManager::AGridManager()
 {
 	PrimaryActorTick.bCanEverTick = true;
-
 }
 
 void AGridManager::BeginPlay()
@@ -27,8 +26,6 @@ void AGridManager::RegisterTile(ATile* Tile)
 		Tiles.Add(gridPT, Tile);
 	}
 	Tiles[gridPT] = Tile;
-
-	UE_LOG(LogTemp, Warning, TEXT("World Pos: %s Grid Pos: %s Tile Name: %s"), *Tile->GetActorLocation().ToString(), *gridPT.ToString(), *Tile->GetActorLabel());
 }
 
 FVector2Int AGridManager::WorldToGrid(FVector worldPt) const

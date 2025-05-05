@@ -12,7 +12,8 @@ void UShooterComponent::BeginPlay()
 	Super::BeginPlay();
 
 	RawRotation = GetRelativeRotation();
-	GetOwner()->GetWorldTimerManager().SetTimer(FireTimerHandler, this, &UShooterComponent::Shoot, FireRate, true);
+
+	Enable();
 }
 
 float UShooterComponent::NormalizeAngle360(float Angle)
@@ -32,6 +33,8 @@ float UShooterComponent::ClampAngle(float Angle, float Min, float Max, bool CanL
 void UShooterComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (!IsEnabled) return;
 
 	RawRotation.Yaw += RotSpeed.X * DeltaTime;
 	RawRotation.Pitch += RotSpeed.Y * DeltaTime;
@@ -54,8 +57,23 @@ void UShooterComponent::Shoot()
 
 			FActorSpawnParameters spawnParams;
 			ABullet* Bullet = Cast<ABullet>(GetWorld()->SpawnActor<AActor>(BulletClass, spawnLoc, spawnRot, spawnParams));
-			Bullet->LifeSpan = LifeSpan;
+			Bullet->SetLifeSpan(LifeSpan);
 		}
 	}
+}
+
+void UShooterComponent::Enable() 
+{
+	if (IsEnabled) return;
+	IsEnabled = true;
+	GetOwner()->GetWorldTimerManager().ClearTimer(FireTimerHandler);
+	GetOwner()->GetWorldTimerManager().SetTimer(FireTimerHandler, this, &UShooterComponent::Shoot, FireRate, true);
+}
+
+void UShooterComponent::Disable() 
+{
+	if (!IsEnabled) return;
+	IsEnabled = false;
+	GetOwner()->GetWorldTimerManager().ClearTimer(FireTimerHandler);
 }
 

@@ -1,12 +1,12 @@
 #include "BulletHellJam2025/Player/PlayerCharacter.h"
-#include "Camera/CameraComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "BulletHellJam2025/Core/TapHandler.h"
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/Grid/Tile.h"
-#include "Kismet/GameplayStatics.h"
 #include "BulletHellJam2025/Core/Vector2Int.h"
+#include "Camera/CameraComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 APlayerCharacter::APlayerCharacter()
 {
@@ -23,100 +23,137 @@ void APlayerCharacter::BeginPlay()
 	TapHandler = new UTapHandler(DashCooldown);
 
 	TapHandler->AddListener("ForwardDash", [this]() {
-		Dash(GetActorForwardVector());
+		Dash(Camera->GetForwardVector());
 	});
 
 	TapHandler->AddListener("BackwardDash", [this]() {
-		Dash(-GetActorForwardVector());
+		Dash(-Camera->GetForwardVector());
 	});
 
 	TapHandler->AddListener("RightDash", [this]() {
-		Dash(GetActorRightVector());
+		Dash(Camera->GetRightVector());
 	});
 
 	TapHandler->AddListener("LeftDash", [this]() {
-		Dash(-GetActorRightVector());
+		Dash(-Camera->GetRightVector());
 	});
 
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
-	Width = Capsule->GetScaledCapsuleRadius();
+	PlayerWidth = 2.0 * Capsule->GetScaledCapsuleRadius();
 
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 
-	// Setup for movement parameters
 	GetCharacterMovement()->MaxWalkSpeed = PlayerSpeed;
 	GetCharacterMovement()->JumpZVelocity = JumpForce;
+	GetCharacterMovement()->GravityScale = GravityScale;
 }
-
-
 
 void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (PlayerMesh && !GetVelocity().IsNearlyZero()) 
-	{
-		FVector Vel = GetVelocity();
-		FRotator Rot = FVector(-Vel.X, -Vel.Y, 0).Rotation();
-		PlayerMesh->SetRelativeRotation(Rot);
-	}
-	if (PlayerMesh) UE_LOG(LogTemp, Log, TEXT("Actor Label: %s"), *PlayerMesh->GetName());
+	UpdatePlayerRotation();
+	
+	LimitSpeed();
+
 	CheckTile(GetActorLocation());
-	CheckTile(GetActorLocation() + FVector(Width, 0, 0));
-	CheckTile(GetActorLocation() - FVector(Width, 0, 0));
-	CheckTile(GetActorLocation() + FVector(0, Width, 0));
-	CheckTile(GetActorLocation() - FVector(0, Width, 0));
+	CheckTile(GetActorLocation() + FVector(PlayerWidth, 0, 0));
+	CheckTile(GetActorLocation() - FVector(PlayerWidth, 0, 0));
+	CheckTile(GetActorLocation() + FVector(0, PlayerWidth, 0));
+	CheckTile(GetActorLocation() - FVector(0, PlayerWidth, 0));
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAxis("MoveForward", this, &APlayerCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &APlayerCharacter::MoveRight);
-	PlayerInputComponent->BindKey(EKeys::W, IE_Pressed, this, &APlayerCharacter::OnWPressed);
-	PlayerInputComponent->BindKey(EKeys::S, IE_Pressed, this, &APlayerCharacter::OnSPressed);
-	PlayerInputComponent->BindKey(EKeys::A, IE_Pressed, this, &APlayerCharacter::OnAPressed);
-	PlayerInputComponent->BindKey(EKeys::D, IE_Pressed, this, &APlayerCharacter::OnDPressed);
-	PlayerInputComponent->BindKey(EKeys::LeftShift, IE_Pressed, this, &APlayerCharacter::OnShiftPressed);
+	PlayerInputComponent->BindKey(EKeys::W, IE_Pressed, this, &APlayerCharacter::DashForward);
+	PlayerInputComponent->BindKey(EKeys::S, IE_Pressed, this, &APlayerCharacter::DashBackward);
+	PlayerInputComponent->BindKey(EKeys::A, IE_Pressed, this, &APlayerCharacter::DashLeft);
+	PlayerInputComponent->BindKey(EKeys::D, IE_Pressed, this, &APlayerCharacter::DashRight);
+	PlayerInputComponent->BindKey(EKeys::LeftShift, IE_Pressed, this, &APlayerCharacter::DashMoveDirection);
 }
 
-void APlayerCharacter::OnShiftPressed()
+void APlayerCharacter::LimitSpeed()
 {
-	Dash(GetLastMovementInputVector());
+	if (!GetCharacterMovement()->IsMovingOnGround() && !IsDashing)
+	{
+		FVector Velocity = GetVelocity();
+		Velocity.X = FMath::Clamp(Velocity.X, -SpeedLimitInAir, SpeedLimitInAir);
+		Velocity.Y = FMath::Clamp(Velocity.Y, -SpeedLimitInAir, SpeedLimitInAir);
+		GetCharacterMovement()->Velocity = FVector(Velocity.X, Velocity.Y, Velocity.Z);
+	}
+}
+
+void APlayerCharacter::UpdatePlayerRotation()
+{
+	FVector Vel = GetVelocity();
+	if (PlayerMesh && !Vel.IsNearlyZero())
+	{
+		FRotator Rot = FVector(-Vel.X, -Vel.Y, 0).Rotation();
+		PlayerMesh->SetRelativeRotation(Rot);
+	}
 }
 
 void APlayerCharacter::CheckTile(FVector pos)
 {
-	if (GetCharacterMovement()->IsFalling()) return;
+	if (GetCharacterMovement()->IsFalling() && !IsDashing) return;
 	ATile* tile = GridManager->GetTileAt(GridManager->WorldToGrid(pos));
 	if (tile != nullptr) tile->TriggerFall();
 }
 
-void APlayerCharacter::OnDeath()
+void APlayerCharacter::OnHit()
 {
-	UGameplayStatics::OpenLevel(this, FName(*GetWorld()->GetName()), false);
+	//UGameplayStatics::OpenLevel(this, FName(*GetWorld()->GetName()), false);
 }
 
-void APlayerCharacter::OnWPressed()
+void APlayerCharacter::DashForward()
 {
 	TapHandler->Invoke("ForwardDash", GetWorld());
 }
 
-void APlayerCharacter::OnSPressed()
+void APlayerCharacter::DashBackward()
 {
 	TapHandler->Invoke("BackwardDash", GetWorld());
 }
 
-void APlayerCharacter::OnAPressed()
+void APlayerCharacter::DashLeft()
 {
 	TapHandler->Invoke("LeftDash", GetWorld());
 }
 
-void APlayerCharacter::OnDPressed()
+void APlayerCharacter::DashRight()
 {
 	TapHandler->Invoke("RightDash", GetWorld());
+}
+
+void APlayerCharacter::DashMoveDirection()
+{
+	Dash(GetLastMovementInputVector());
+}
+
+bool APlayerCharacter::CanDash()
+{
+	return !IsDashing && !GetCharacterMovement()->IsFalling();
+}
+
+void APlayerCharacter::Dash(FVector Direction)
+{
+	if (CanDash()) 
+	{
+		IsDashing = true;
+		FVector normal = Direction.GetSafeNormal();
+		LaunchCharacter(FVector(normal.X, normal.Y, 0) * DashForce, true, true);
+		GetWorldTimerManager().SetTimer(DashTimeHandle, this, &APlayerCharacter::StopDashing, DashCooldown, false);
+	}
+
+}
+
+void APlayerCharacter::StopDashing()
+{
+	IsDashing = false;
 }
 
 void APlayerCharacter::MoveForward(float Input)
@@ -130,9 +167,3 @@ void APlayerCharacter::MoveRight(float Input)
 	FVector Right = Camera->GetRightVector();
 	AddMovementInput(Right * Input);
 }
-
-void APlayerCharacter::Dash(FVector Direction)
-{
-	LaunchCharacter(Direction.GetSafeNormal() * DashForce, true, true);
-}
-

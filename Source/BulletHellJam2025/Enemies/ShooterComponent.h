@@ -23,8 +23,6 @@ protected:
 public:	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	void Shoot();
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<AActor> BulletClass;
 
@@ -33,7 +31,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FVector RotSpeed;
-
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool YawLoop;
@@ -59,6 +56,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FVector> SpawnDirections;
 
+	void Enable();
+	void Disable();
+
+protected:
 	FRotator RawRotation;
 	FTimerHandle FireTimerHandler;
+	bool IsEnabled;
+
+	void Shoot();
 };

@@ -17,6 +17,13 @@ void ABullet::BeginPlay()
 	GetWorld()->GetTimerManager().SetTimer(LifeHandler, this, &ABullet::Remove, LifeSpan, false);
 }
 
+void ABullet::SetLifeSpan(float Span)
+{
+	this->LifeSpan = Span;
+	GetWorld()->GetTimerManager().ClearTimer(LifeHandler);
+	GetWorld()->GetTimerManager().SetTimer(LifeHandler, this, &ABullet::Remove, this->LifeSpan, false);
+}
+
 void ABullet::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -36,7 +43,7 @@ void ABullet::OnOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		if (OtherActor->IsA(APlayerCharacter::StaticClass()))
 		{
 			APlayerCharacter* player = Cast<APlayerCharacter>(OtherActor);
-			player->OnDeath();
+			player->OnHit();
 		}
 	}
 }
