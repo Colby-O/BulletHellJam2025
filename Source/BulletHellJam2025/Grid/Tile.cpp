@@ -32,12 +32,14 @@ void ATile::TriggerFall()
 {
 	if (IsFalling) return;
 	IsFalling = true;
+	HasFallen = false;
 	SetColor(FLinearColor::Red);
 	GetWorld()->GetTimerManager().SetTimer(TimerHandler, this, &ATile::StartFall, FallDelay, true);
 }
 
 void ATile::StartFall()
 {
+	HasFallen = true;
 	GetWorld()->GetTimerManager().SetTimer(TimerHandler, this, &ATile::Fall, FallTime / 100.0, true);
 }
 
@@ -52,6 +54,7 @@ void ATile::ResetTile()
 
 		pos.Z = 0;
 		IsFalling = false;
+		HasFallen = false;
 		GetWorld()->GetTimerManager().ClearTimer(TimerHandler);
 	}
 

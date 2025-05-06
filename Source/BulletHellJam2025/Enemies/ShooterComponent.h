@@ -27,6 +27,12 @@ public:
 	TSubclassOf<AActor> BulletClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString FromTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Offset = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float FireRate = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -58,11 +64,13 @@ public:
 
 	void Enable();
 	void Disable();
+	void Shoot(float ExtraVel = 0);
+	void ShootInternal();
+	void SetFrom(FString Tag);
+	FVector GetShootDirection(int index);
 
 protected:
 	FRotator RawRotation;
 	FTimerHandle FireTimerHandler;
 	bool IsEnabled;
-
-	void Shoot();
 };

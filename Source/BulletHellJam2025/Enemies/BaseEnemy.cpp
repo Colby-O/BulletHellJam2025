@@ -3,6 +3,7 @@
 #include "BulletHellJam2025/Enemies/Bullet.h"
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/Player/PlayerCharacter.h"
+#include "BulletHellJam2025/Grid/Tile.h"
 #include <Kismet/GameplayStatics.h>
 
 TArray<ABaseEnemy*> ABaseEnemy::Enemies;
@@ -25,8 +26,11 @@ void ABaseEnemy::BeginPlay()
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 	Player = Cast<APlayerCharacter>(UGameplayStatics::GetActorOfClass(GetWorld(), APlayerCharacter::StaticClass()));
 
-	if (!ShooterComp) ShooterComp = FindComponentByClass<UShooterComponent>();
+	CurrentState = EMovementState::Idle;
+	LastState = EMovementState::Idle;
 
+	if (!ShooterComp) ShooterComp = FindComponentByClass<UShooterComponent>();
+	ShooterComp->SetFrom("Enemy");
 	FActorSpawnParameters spawnParams;
 	ABullet* Bullet = Cast<ABullet>(GetWorld()->SpawnActor<AActor>(ShooterComp->BulletClass, FVector::Zero(), FRotator::ZeroRotator, spawnParams));
 
@@ -41,15 +45,33 @@ void ABaseEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (IsKnockingBack) return;
+
+	if (!ClosestEnemy && ABaseEnemy::Enemies.Num() > 1) 
+	{
+		ClosestEnemy = GetClosestEnemy();
+		HoldPosition = false;
+	}
+
 	FVector rawDirectionToPlayer = (Player->GetActorLocation() - GetActorLocation()).GetSafeNormal();
 	FVector directionToPlayer = FVector(rawDirectionToPlayer.X, rawDirectionToPlayer.Y, 0);
 	SetActorRotation(directionToPlayer.Rotation());
 
-	float dstToClosestEnemy = ClosestEnemy ? FVector::Dist(GetActorLocation(), ClosestEnemy->GetActorLocation()) : BIG_NUMBER;
-
+	LocateTarget();
 	HandleAttack();
 	HandleRotation();
 	HandleMovement(DeltaTime);
+
+	ATile* curTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
+	if (!curTile || curTile->HasFallen)
+	{
+		Destroy();
+		if (ClosestEnemy) 
+		{
+			ClosestEnemy->ClosestEnemy = ClosestEnemy->GetClosestEnemy();
+			ClosestEnemy->HoldPosition = false;
+		}
+	}
 }
 
 FVector ABaseEnemy::GetDirectionToPlayer()
@@ -58,9 +80,140 @@ FVector ABaseEnemy::GetDirectionToPlayer()
 	return FVector(rawDirectionToPlayer.X, rawDirectionToPlayer.Y, 0);
 }
 
+FVector ABaseEnemy::GetDirectionToNextTile()
+{
+	if (CurrentPath.IsEmpty()) return FVector::ZeroVector;
+	ATile* next = CurrentPath[0];
+	if (!next) return FVector::ZeroVector;
+	FVector rawDirection = (next->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+	return FVector(rawDirection.X, rawDirection.Y, 0);
+}
+
 float ABaseEnemy::GetDistToPlayer() 
 {
-	return FVector::Dist(GetActorLocation(), Player->GetActorLocation());
+	FVector cur = GetActorLocation();
+	cur = FVector(cur.X, cur.Y, 0);
+
+	FVector playerCur = Player->GetActorLocation();
+	playerCur = FVector(playerCur.X, playerCur.Y, 0);
+
+	return FVector::Dist(cur, playerCur);
+}
+
+void ABaseEnemy::UpdateState()
+{
+	LastState = CurrentState;
+
+	FVector2Int curLoc = GridManager->WorldToGrid(GetActorLocation());
+	ATile* currentTile = GridManager->GetTileAt(curLoc);
+
+	if (currentTile && currentTile->IsFalling)
+	{
+		CurrentState = EMovementState::MovingOffTile;
+	}
+	else if (ClosestEnemy && ClosestEnemy->HoldPosition == true && HoldPosition == false)
+	{
+		CurrentState = EMovementState::MovingAwayFromOther;
+	}
+	else if (!IsAttacking && GetDistToPlayer() <= VisionRange && GetDistToPlayer() >= AttackRange)
+	{
+		CurrentState = EMovementState::Chasing;
+	}
+	else if (ClosestEnemy && FVector::Dist(GetActorLocation(), ClosestEnemy->GetActorLocation()) < Spacing)
+	{
+		CurrentState = EMovementState::MovingAwayFromOther;
+	}
+	else 
+	{
+		HoldPosition = false;
+		CurrentState = EMovementState::Idle;
+	}
+}
+
+void ABaseEnemy::LocateTarget()
+{
+	UpdateState();
+
+	if (DebugMovement) for (ATile* t : CurrentPath) t->SetColor(t->IsFalling ? FLinearColor::Red : t->DefaultColor);
+
+	UEnum* EnumPtr = StaticEnum<EMovementState>();
+	if (EnumPtr)
+	{
+		FString EnumName = EnumPtr->GetNameStringByValue((int64)CurrentState);
+		FString EnumName2 = EnumPtr->GetNameStringByValue((int64)CurrentState);
+		UE_LOG(LogTemp, Log, TEXT("Current State: %s"), *EnumName);
+		UE_LOG(LogTemp, Log, TEXT("Last State: %s"), *EnumName2);
+
+	}
+
+	if (CurrentState != EMovementState::Chasing) GetWorld()->GetTimerManager().ClearTimer(ChaseTimerHandle);
+
+	if (CurrentState != LastState)
+	{
+		CurrentPath.Empty();
+	}
+
+	FVector2Int curLoc = GridManager->WorldToGrid(GetActorLocation());
+	ATile* currentTile = GridManager->GetTileAt(curLoc);
+
+	if (CurrentState == EMovementState::Chasing)
+	{
+		if (CurrentState != LastState) 
+		{
+			GetWorld()->GetTimerManager().ClearTimer(ChaseTimerHandle);
+			RelocatePlayer();
+			GetWorld()->GetTimerManager().SetTimer(ChaseTimerHandle, this, &ABaseEnemy::RelocatePlayer, Memory, true);
+		}
+		else if (!CurrentPath.IsEmpty() && currentTile == CurrentPath[0])
+		{
+			CurrentPath.RemoveAt(0);
+		}
+		else if (CurrentPath.IsEmpty()) 
+		{
+			RelocatePlayer();
+		}
+
+		if (!CurrentPath.IsEmpty()) 
+		{
+			UE_LOG(LogTemp, Log, TEXT("Next Tile Loc: %s"), *(GridManager->WorldToGrid(CurrentPath[0]->GetActorLocation()).ToString()));
+		}
+	}
+	else if (CurrentState == EMovementState::MovingOffTile)
+	{
+		FVector2Int safeLoc;
+		if (GridManager->GetNearestSafeTile(curLoc, safeLoc)) 
+		{
+			CurrentPath.Empty();
+			CurrentPath = GridManager->FindPath(curLoc, safeLoc, 0.5f);
+		}
+	}
+	else if (CurrentState == EMovementState::MovingAwayFromOther)
+	{
+		if (ClosestEnemy && ClosestEnemy->HoldPosition && LastState != CurrentState)
+		{
+				HoldPosition = false;
+				ClosestEnemy->HoldPosition = true;
+				FVector2Int safeLoc;
+				if (GridManager->GetNearestSafeTile(curLoc, safeLoc, Spacing / GridManager->TileSize + 1))
+				{
+					CurrentPath.Empty();
+					CurrentPath = GridManager->FindPath(curLoc, safeLoc, SMALL_NUMBER);
+				}
+		}
+		else if (ClosestEnemy && ClosestEnemy->HoldPosition && !CurrentPath.IsEmpty() && currentTile == CurrentPath[0])
+		{
+			CurrentPath.RemoveAt(0);
+		}
+		else if (ClosestEnemy && ClosestEnemy->HoldPosition && CurrentPath.IsEmpty())
+		{
+			HoldPosition = false;
+			ClosestEnemy->HoldPosition = false;
+			ClosestEnemy = GetClosestEnemy();
+		}
+	}
+
+	if (!CurrentPath.IsEmpty() && GridManager->GetTileAt(curLoc) == CurrentPath[0]) CurrentPath.RemoveAt(0);
+	if (DebugMovement) for (ATile* t : CurrentPath) t->SetColor(FLinearColor::Blue);
 }
 
 void ABaseEnemy::HandleAttack()
@@ -85,30 +238,91 @@ void ABaseEnemy::HandleRotation()
 
 void ABaseEnemy::HandleMovement(float DeltaTime) 
 {
-	FVector directionToPlayer = GetDirectionToPlayer();
-	float dstToClosestEnemy = ClosestEnemy ? FVector::Dist(GetActorLocation(), ClosestEnemy->GetActorLocation()) : BIG_NUMBER;
-
 	if (GetDistToPlayer() <= VisionRange) ShooterComp->Enable();
 	else ShooterComp->Disable();
 
-	if (!IsAttacking && GetDistToPlayer() <= VisionRange)
-	{
-		MoveTowards(DeltaTime, directionToPlayer);
+	if (CurrentPath.Num() == 0) return;
 
-	}
-	else if (dstToClosestEnemy <= Spacing)
+	FVector direction = GetDirectionToNextTile();
+
+	MoveTowards(DeltaTime, direction);
+
+	FVector newDirection = GetDirectionToNextTile();
+
+	if (!CurrentPath.IsEmpty() && (newDirection + direction).IsNearlyZero()) 
 	{
-		FVector directionAwayFromClosest = (GetActorLocation() - ClosestEnemy->GetActorLocation()).GetSafeNormal();
-		MoveTowards(DeltaTime, directionAwayFromClosest);
+		FVector tileLoc = CurrentPath[0]->GetActorLocation();
+		SetActorLocation(FVector(tileLoc.X, tileLoc.Y, GetActorLocation().Z));
 	}
+	
 }
 
 void ABaseEnemy::MoveTowards(float DeltaTime, FVector Direction) 
 {
 	FVector loc = GetActorLocation();
 	loc += Speed * DeltaTime * Direction;
-	SetActorLocation(loc);
-	ClosestEnemy = GetClosestEnemy();
+	SetActorLocation(loc, true);
+	if (CurrentState != EMovementState::MovingAwayFromOther) 
+	{
+		ClosestEnemy = GetClosestEnemy();
+		HoldPosition = false;
+	}
+}
+
+void ABaseEnemy::Knockback(FVector Direction)
+{
+	if (IsKnockingBack) return;
+
+	KnockbackStart = GetActorLocation();
+	KnockbackEnd = KnockbackStart + Direction * KnockbackAmount;
+	KnockbackEnd.Z = KnockbackStart.Z;
+
+	KnockbackElapsed = 0.0f;
+	IsKnockingBack = true;
+	GetWorld()->GetTimerManager().SetTimer(KnockbackTimerHandle, this, &ABaseEnemy::KnockbackStep, TimeStep, true);
+}
+
+void ABaseEnemy::KnockbackStep()
+{
+	KnockbackElapsed += TimeStep;
+	float alpha = KnockbackElapsed / KnockbackRate;
+	float smoothedAlpha = FMath::InterpEaseOut(0.f, 1.f, alpha, 2.0f);
+	FVector newLocation = FMath::Lerp(KnockbackStart, KnockbackEnd, smoothedAlpha);
+	SetActorLocation(newLocation, true); 
+
+	if (alpha >= 1.0f)
+	{
+		IsKnockingBack = false;
+		GetWorld()->GetTimerManager().ClearTimer(KnockbackTimerHandle);
+	}
+}
+
+void ABaseEnemy::RelocatePlayer()
+{
+	if (DebugMovement) for (ATile* t : CurrentPath) t->SetColor(t->IsFalling ? FLinearColor::Red : t->DefaultColor);
+	CurrentPath.Empty();
+	FVector2Int curLoc = GridManager->WorldToGrid(GetActorLocation());
+	CurrentPath = GridManager->FindPath(curLoc, GridManager->WorldToGrid(Player->GetActorLocation()), FMath::Max(AttackRange / GridManager->TileSize - 1, SMALL_NUMBER), GetTilesToIgnore());
+	if (DebugMovement) for (ATile* t : CurrentPath) t->SetColor(FLinearColor::Blue);
+}
+
+TArray<FVector2Int> ABaseEnemy::GetTilesToIgnore()
+{
+	TArray<FVector2Int> tileToIgnore;
+
+	for (ABaseEnemy* e : ABaseEnemy::Enemies)
+	{
+		if (e == this) continue;
+		int numTiles = FMath::CeilToInt32(Spacing / GridManager->TileSize);
+		for (int i = -FMath::FloorToInt32(numTiles / 2.0); i < FMath::FloorToInt32(numTiles / 2.0); i++)
+		{
+			for (int j = -FMath::FloorToInt32(numTiles / 2.0); j < FMath::FloorToInt32(numTiles / 2.0); j++)
+			{
+				tileToIgnore.Add(GridManager->WorldToGrid(e->GetActorLocation()) + FVector2Int(i, j));
+			}
+		}
+	}
+	return tileToIgnore;
 }
 
 ABaseEnemy* ABaseEnemy::GetClosestEnemy() 

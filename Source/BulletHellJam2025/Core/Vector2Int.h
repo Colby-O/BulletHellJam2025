@@ -18,8 +18,11 @@ public:
 	FVector2Int(int X, int Y);
 	~FVector2Int();
 
+	float Dist(const FVector2Int& Other);
+
 	bool operator==(const FVector2Int& Other) const;
 	bool operator!=(const FVector2Int& Other) const;
+	FVector2Int operator+(const FVector2Int& Other) const;
 	FString ToString() const;
 	friend uint32 GetTypeHash(const FVector2Int& Vector);
 };

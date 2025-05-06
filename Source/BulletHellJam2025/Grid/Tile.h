@@ -38,6 +38,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool IsFalling = false;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	bool HasFallen = false;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite);
 	float FallTime = 1;
 

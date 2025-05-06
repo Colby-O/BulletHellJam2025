@@ -24,6 +24,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float LifeSpan = 1;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FString FromTag;
+
 	UFUNCTION()
 	void OnOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
@@ -34,4 +37,5 @@ public:
 
 	void SetLifeSpan(float Span);
 	void Remove();
+	void SetFrom(FString Tag);
 };

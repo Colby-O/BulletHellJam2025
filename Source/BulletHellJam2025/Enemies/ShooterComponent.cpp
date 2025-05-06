@@ -46,20 +46,41 @@ void UShooterComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 	SetRelativeRotation(RawRotation);
 }
 
-void UShooterComponent::Shoot()
+void UShooterComponent::Shoot(float ExtraVel)
 {
 	if (BulletClass)
 	{
 		for (const FVector& dir : SpawnDirections) 
 		{
-			FVector spawnLoc = GetComponentLocation() + GetComponentRotation().RotateVector(dir.GetSafeNormal()) * 100.0;
+			FVector spawnLoc = GetComponentLocation() + GetComponentRotation().RotateVector(dir.GetSafeNormal()) * Offset;
 			FRotator spawnRot = GetComponentRotation().RotateVector(dir.GetSafeNormal()).Rotation();
 
 			FActorSpawnParameters spawnParams;
 			ABullet* Bullet = Cast<ABullet>(GetWorld()->SpawnActor<AActor>(BulletClass, spawnLoc, spawnRot, spawnParams));
-			Bullet->SetLifeSpan(LifeSpan);
+			if (Bullet) 
+			{
+				Bullet->SetLifeSpan(LifeSpan);
+				Bullet->SetFrom(FromTag);
+				Bullet->BulletSpeed = Bullet->BulletSpeed + FMath::Max(ExtraVel, 0);
+			}
 		}
 	}
+}
+
+void UShooterComponent::SetFrom(FString Tag)
+{
+	FromTag = Tag;
+}
+
+FVector UShooterComponent::GetShootDirection(int index)
+{
+	if (index >= SpawnDirections.Num()) return FVector::ZeroVector;
+	return GetComponentRotation().RotateVector(SpawnDirections[index]);
+}
+
+void UShooterComponent::ShootInternal()
+{
+	Shoot();
 }
 
 void UShooterComponent::Enable() 
@@ -67,7 +88,7 @@ void UShooterComponent::Enable()
 	if (IsEnabled) return;
 	IsEnabled = true;
 	GetOwner()->GetWorldTimerManager().ClearTimer(FireTimerHandler);
-	GetOwner()->GetWorldTimerManager().SetTimer(FireTimerHandler, this, &UShooterComponent::Shoot, FireRate, true);
+	GetOwner()->GetWorldTimerManager().SetTimer(FireTimerHandler, this, &UShooterComponent::ShootInternal, FireRate, true);
 }
 
 void UShooterComponent::Disable() 

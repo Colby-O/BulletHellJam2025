@@ -27,8 +27,20 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	UStaticMeshComponent* PlayerMesh;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
+	UStaticMeshComponent* GunMesh;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "References")
 	class AGridManager* GridManager;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
+	class UShooterComponent* ShooterComp;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	bool EnableTileFall = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float PlaneHeight = 60.0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float PlayerSpeed = 1000.0;
@@ -50,6 +62,7 @@ protected:
 
 	class UTapHandler* TapHandler;
 	FTimerHandle DashTimeHandle;
+	APlayerController* Controller;
 	float PlayerWidth;
 	bool IsDashing;
 
@@ -63,9 +76,11 @@ protected:
 	void DashLeft();
 	void DashRight();
 	void DashMoveDirection();
+	void Shoot();
 	void CheckTile(FVector pos);
 	void UpdatePlayerRotation();
 	void LimitSpeed();
+	void SetCursor();
 
 public:
 	void OnHit();

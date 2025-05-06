@@ -3,6 +3,7 @@
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/Grid/Tile.h"
 #include "BulletHellJam2025/Core/Vector2Int.h"
+#include "BulletHellJam2025/Enemies/ShooterComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -19,6 +20,10 @@ APlayerCharacter::APlayerCharacter()
 void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (!ShooterComp) ShooterComp = FindComponentByClass<UShooterComponent>();
+	ShooterComp->SetFrom("Player");
+	ShooterComp->Disable();
 
 	TapHandler = new UTapHandler(DashCooldown);
 
@@ -46,6 +51,10 @@ void APlayerCharacter::BeginPlay()
 	GetCharacterMovement()->MaxWalkSpeed = PlayerSpeed;
 	GetCharacterMovement()->JumpZVelocity = JumpForce;
 	GetCharacterMovement()->GravityScale = GravityScale;
+
+	Controller = Cast<APlayerController>(GetController());
+
+	SetCursor();
 }
 
 void APlayerCharacter::Tick(float DeltaTime)
@@ -56,11 +65,14 @@ void APlayerCharacter::Tick(float DeltaTime)
 	
 	LimitSpeed();
 
-	CheckTile(GetActorLocation());
-	CheckTile(GetActorLocation() + FVector(PlayerWidth, 0, 0));
-	CheckTile(GetActorLocation() - FVector(PlayerWidth, 0, 0));
-	CheckTile(GetActorLocation() + FVector(0, PlayerWidth, 0));
-	CheckTile(GetActorLocation() - FVector(0, PlayerWidth, 0));
+	if (EnableTileFall) 
+	{
+		CheckTile(GetActorLocation());
+		CheckTile(GetActorLocation() + FVector(PlayerWidth, 0, 0));
+		CheckTile(GetActorLocation() - FVector(PlayerWidth, 0, 0));
+		CheckTile(GetActorLocation() + FVector(0, PlayerWidth, 0));
+		CheckTile(GetActorLocation() - FVector(0, PlayerWidth, 0));
+	}
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -74,6 +86,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindKey(EKeys::A, IE_Pressed, this, &APlayerCharacter::DashLeft);
 	PlayerInputComponent->BindKey(EKeys::D, IE_Pressed, this, &APlayerCharacter::DashRight);
 	PlayerInputComponent->BindKey(EKeys::LeftShift, IE_Pressed, this, &APlayerCharacter::DashMoveDirection);
+	PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &APlayerCharacter::Shoot);
 }
 
 void APlayerCharacter::LimitSpeed()
@@ -87,13 +100,35 @@ void APlayerCharacter::LimitSpeed()
 	}
 }
 
+void APlayerCharacter::SetCursor()
+{
+	if (Controller)
+	{
+		Controller->bShowMouseCursor = true;
+		Controller->bEnableClickEvents = true;
+		Controller->bEnableMouseOverEvents = true;
+	}
+}
+
 void APlayerCharacter::UpdatePlayerRotation()
 {
-	FVector Vel = GetVelocity();
-	if (PlayerMesh && !Vel.IsNearlyZero())
+	if (!Controller) return;
+
+	FVector worldPos, worldDir;
+
+	if (Controller->DeprojectMousePositionToWorld(worldPos, worldDir)) 
 	{
-		FRotator Rot = FVector(-Vel.X, -Vel.Y, 0).Rotation();
-		PlayerMesh->SetRelativeRotation(Rot);
+		FVector start = worldPos;
+		FVector end = worldPos + worldDir * BIG_NUMBER;
+
+		FPlane Plane(FVector(0, 0, PlaneHeight), FVector::UpVector);
+		FVector Target = FMath::LinePlaneIntersection(start, end, Plane);
+
+		FVector Direction = (GunMesh->GetComponentLocation() - Target);
+		Direction.Z = 0;
+		Direction = Direction.GetSafeNormal();
+
+		PlayerMesh->SetRelativeRotation(Direction.Rotation());
 	}
 }
 
@@ -132,6 +167,11 @@ void APlayerCharacter::DashRight()
 void APlayerCharacter::DashMoveDirection()
 {
 	Dash(GetLastMovementInputVector());
+}
+
+void APlayerCharacter::Shoot()
+{
+	ShooterComp->Shoot(GetVelocity().Dot(ShooterComp->GetShootDirection(0)));
 }
 
 bool APlayerCharacter::CanDash()

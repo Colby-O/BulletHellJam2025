@@ -1,5 +1,7 @@
 #include "BulletHellJam2025/Enemies/Bullet.h"
+#include "BulletHellJam2025/Grid/Tile.h"
 #include "BulletHellJam2025/Player/PlayerCharacter.h"
+#include "BulletHellJam2025/Enemies/BaseEnemy.h"
 
 ABullet::ABullet()
 {
@@ -24,6 +26,11 @@ void ABullet::SetLifeSpan(float Span)
 	GetWorld()->GetTimerManager().SetTimer(LifeHandler, this, &ABullet::Remove, this->LifeSpan, false);
 }
 
+void ABullet::SetFrom(FString Tag)
+{
+	FromTag = Tag;
+}
+
 void ABullet::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -39,12 +46,19 @@ void ABullet::OnOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 {
 	if (OtherActor && OtherActor != this)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Triggered by: %s"), *OtherActor->GetName());
-		if (OtherActor->IsA(APlayerCharacter::StaticClass()))
+		UE_LOG(LogTemp, Warning, TEXT("Triggered by: %s"), *OtherActor->GetClass()->GetName());
+		if (OtherActor->IsA(APlayerCharacter::StaticClass()) && FromTag.Compare("Player", ESearchCase::IgnoreCase) != 0)
 		{
 			APlayerCharacter* player = Cast<APlayerCharacter>(OtherActor);
 			player->OnHit();
 		}
+		else if (OtherActor->IsA(ABaseEnemy::StaticClass()) && FromTag.Compare("Player", ESearchCase::IgnoreCase) == 0)
+		{
+			ABaseEnemy* enemy = Cast<ABaseEnemy>(OtherActor);
+			enemy->Knockback(GetActorForwardVector());
+		}
+
+		Destroy();
 	}
 }
 
