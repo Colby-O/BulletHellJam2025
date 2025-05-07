@@ -4,8 +4,7 @@
 
 ATile::ATile()
 {
-	PrimaryActorTick.bCanEverTick = true;
-
+	PrimaryActorTick.bCanEverTick = false;
 }
 
 void ATile::BeginPlay()
@@ -45,7 +44,7 @@ void ATile::Tick(float DeltaTime)
 
 void ATile::TriggerFall()
 {
-	if (IsFalling) return;
+	if (IsFalling || !IsEnable) return;
 	IsFalling = true;
 	HasFallen = false;
 	SetColor(FLinearColor::Red);
@@ -85,7 +84,7 @@ void ATile::Fall()
 	{
 		pos.Z = -FallAmount;
 		GetWorld()->GetTimerManager().ClearTimer(TimerHandler);
-		GetWorld()->GetTimerManager().SetTimer(TimerHandler, this, &ATile::ResetTile, FallTime / 100.0, true);
+		GetWorld()->GetTimerManager().SetTimer(TimerHandler, this, &ATile::ResetTile, ResetTime / 100.0, true);
 	}
 
 	SetActorLocation(pos);
@@ -93,6 +92,8 @@ void ATile::Fall()
 
 void ATile::SetColor(FLinearColor Color)
 {
+	if (!IsEnable) return;
+
 	UMaterialInstanceDynamic* DynMaterial = UMaterialInstanceDynamic::Create(Mat, this);
 
 	if (DynMaterial)

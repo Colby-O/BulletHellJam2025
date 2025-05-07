@@ -1,5 +1,7 @@
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/Grid/Tile.h"
+#include <Kismet/GameplayStatics.h>
+#include "GameFramework/Character.h"
 
 AGridManager::AGridManager()
 {
@@ -9,12 +11,35 @@ AGridManager::AGridManager()
 void AGridManager::BeginPlay()
 {
 	Super::BeginPlay();
+
+	GenerateGrid();
 }
 
 void AGridManager::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	UpdateTileVisibility();
+}
 
+void AGridManager::UpdateTileVisibility()
+{
+	ACharacter* player = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+	if (!player) return;
+
+	FVector playerLocation = player->GetActorLocation();
+
+	for (const TPair<FVector2Int, AActor*>& pair : Tiles)
+	{
+		AActor* tile = pair.Value;
+		if (!tile) continue;
+
+		float distance = FVector::Dist(tile->GetActorLocation(), playerLocation);
+		bool shouldBeActive = distance <= ViewDist;
+
+		tile->SetActorHiddenInGame(!shouldBeActive);
+		tile->SetActorEnableCollision(shouldBeActive);
+		//tile->SetActorTickEnabled(shouldBeActive);
+	}
 }
 
 void AGridManager::RegisterTile(ATile* Tile)
@@ -41,6 +66,49 @@ FVector AGridManager::GridToWorld(FVector2Int gridPt) const
 ATile* AGridManager::GetTileAt(const FVector2Int& pt) const
 {
 	return Tiles.Contains(pt) ? Tiles[pt] : nullptr;
+}
+
+void AGridManager::GenerateGrid()
+{
+	if (!TilePrefab|| MapRadius <= 0.f || TileSize <= 0.f) return;
+
+	UWorld* world = GetWorld();
+	if (!world) return;
+
+	float halfTile = TileSize * 0.5f;
+
+	int tilesPerAxis = FMath::CeilToInt((2 * MapRadius) / TileSize);
+	float edgeThreshold = TileSize;
+
+	for (int32 x = -tilesPerAxis / 2; x <= tilesPerAxis / 2; ++x)
+	{
+		for (int32 y = -tilesPerAxis / 2; y <= tilesPerAxis / 2; ++y)
+		{
+			float tileCenterX = x * TileSize + halfTile;
+			float tileCenterY = y * TileSize + halfTile;
+
+			float Distance = FMath::Sqrt(tileCenterX * tileCenterX + tileCenterY * tileCenterY);
+
+			if (Distance <= BossRadius) 
+			{
+				FVector spawnLocation = MapCenter + FVector(tileCenterX, tileCenterY, 0.f);
+				FRotator spawnRotation = FRotator::ZeroRotator;
+
+				world->SpawnActor<AActor>(BossStandPrefab, spawnLocation, spawnRotation);
+			}
+			else if (Distance <= MapRadius)
+			{
+				bool isEdge = (MapRadius - Distance) <= edgeThreshold;
+
+				TSubclassOf<AActor> tileClassToUse = isEdge ? EdgePrefab : TilePrefab;
+
+				FVector spawnLocation = MapCenter + FVector(tileCenterX, tileCenterY, 0.f);
+				FRotator spawnRotation = FRotator::ZeroRotator;
+
+				world->SpawnActor<AActor>(tileClassToUse, spawnLocation, spawnRotation);
+			}
+		}
+	}
 }
 
 float AGridManager::GetHeuristic(const FVector2Int& A, const FVector2Int& B)

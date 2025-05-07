@@ -35,6 +35,10 @@ public:
 	UStaticMeshComponent* Mesh;
 	UMaterialInterface* Mat;
 
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite);
+	bool IsEnable = true;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool IsFalling = false;
 
@@ -43,6 +47,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite);
 	float FallTime = 1;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite);
+	float ResetTime = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite);
 	float FallDelay = 1;
