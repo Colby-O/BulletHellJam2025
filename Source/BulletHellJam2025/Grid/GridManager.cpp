@@ -30,8 +30,7 @@ void AGridManager::RegisterTile(ATile* Tile)
 
 FVector2Int AGridManager::WorldToGrid(FVector worldPt) const
 {
-	FVector clamped = FVector(FMath::RoundToInt(worldPt.X) / TileSize, FMath::RoundToInt(worldPt.Y) / TileSize, FMath::RoundToInt(worldPt.Z) / TileSize);
-	return FVector2Int(FMath::FloorToInt(clamped.X), FMath::FloorToInt(clamped.Y));
+	return FVector2Int(FMath::RoundToInt(worldPt.X / TileSize), FMath::RoundToInt(worldPt.Y / TileSize));
 }
 
 FVector AGridManager::GridToWorld(FVector2Int gridPt) const

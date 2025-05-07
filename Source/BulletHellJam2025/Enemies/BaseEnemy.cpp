@@ -3,7 +3,7 @@
 #include "BulletHellJam2025/Enemies/Bullet.h"
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/Player/PlayerCharacter.h"
-#include "BulletHellJam2025/Grid/Cell.h"
+#include "BulletHellJam2025/Grid/Tile.h"
 #include <Kismet/GameplayStatics.h>
 
 TArray<ABaseEnemy*> ABaseEnemy::Enemies;
@@ -289,16 +289,16 @@ void ABaseEnemy::KnockbackStep()
 
 void ABaseEnemy::RelocatePlayer()
 {
-	if (DebugMovement) for (FCell* t : CurrentPath) t->SetColor(t->IsFalling ? FLinearColor::Red : t->Grid->DefaultColor);
+	if (DebugMovement) for (ATile* t : CurrentPath) t->SetColor(t->IsFalling ? FLinearColor::Red : t->DefaultColor);
 	CurrentPath.Empty();
 	FVector2Int curLoc = GridManager->WorldToGrid(GetActorLocation());
 	CurrentPath = GridManager->FindPath(curLoc, GridManager->WorldToGrid(Player->GetActorLocation()), FMath::Max(AttackRange / GridManager->TileSize - 1, SMALL_NUMBER), GetTilesToIgnore());
-	if (DebugMovement) for (FCell* t : CurrentPath) t->SetColor(FLinearColor::Blue);
+	if (DebugMovement) for (ATile* t : CurrentPath) t->SetColor(FLinearColor::Blue);
 }
 
 void ABaseEnemy::CheckForDeath()
 {
-	FCell* curTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
+	ATile* curTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
 	if (!curTile || curTile->HasFallen)
 	{
 		Destroy();

@@ -66,7 +66,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 	
 	LimitSpeed();
 
-	FCell* currentTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
+	ATile* currentTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
 	if (!IsDashing && (!currentTile || GetActorLocation().Z < -PlayerHeight)) OnDeath();
 	if (EnableTileFall) 
 	{

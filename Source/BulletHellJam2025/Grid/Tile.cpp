@@ -14,7 +14,22 @@ void ATile::BeginPlay()
 	Mesh = FindComponentByClass<UStaticMeshComponent>();
 	Mat = Mesh->GetMaterial(1);
     GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
-    if (GridManager) GridManager->RegisterTile(this);
+
+	if (GridManager)
+	{
+		auto RoundToNearestTileSize = [](float Value, float TileSize)
+		{
+			return FMath::CeilToFloat(Value / TileSize) * TileSize;
+		};
+
+		FVector correctLocation = GetActorLocation();
+		correctLocation.X = RoundToNearestTileSize(correctLocation.X, GridManager->TileSize);
+		correctLocation.Y = RoundToNearestTileSize(correctLocation.Y, GridManager->TileSize);
+		correctLocation.Z = RoundToNearestTileSize(correctLocation.Z, GridManager->TileSize);
+		SetActorLocation(correctLocation);
+
+		GridManager->RegisterTile(this);
+	}
 
 	UMaterialInstanceDynamic* DynMaterial = UMaterialInstanceDynamic::Create(Mat, this);
 	if (DynMaterial)
