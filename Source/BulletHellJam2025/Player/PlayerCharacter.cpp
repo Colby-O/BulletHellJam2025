@@ -45,6 +45,7 @@ void APlayerCharacter::BeginPlay()
 
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
 	PlayerWidth = 2.0 * Capsule->GetScaledCapsuleRadius();
+	PlayerHeight = 2.0 * Capsule->GetScaledCapsuleHalfHeight();
 
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 
@@ -65,6 +66,8 @@ void APlayerCharacter::Tick(float DeltaTime)
 	
 	LimitSpeed();
 
+	FCell* currentTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
+	if (!IsDashing && (!currentTile || GetActorLocation().Z < -PlayerHeight)) OnDeath();
 	if (EnableTileFall) 
 	{
 		CheckTile(GetActorLocation());
@@ -72,6 +75,14 @@ void APlayerCharacter::Tick(float DeltaTime)
 		CheckTile(GetActorLocation() - FVector(PlayerWidth, 0, 0));
 		CheckTile(GetActorLocation() + FVector(0, PlayerWidth, 0));
 		CheckTile(GetActorLocation() - FVector(0, PlayerWidth, 0));
+		if (EnableCornerFall) 
+		{
+			CheckTile(GetActorLocation() - FVector(PlayerWidth, PlayerWidth, 0));
+			CheckTile(GetActorLocation() - FVector(-PlayerWidth, PlayerWidth, 0));
+			CheckTile(GetActorLocation() - FVector(PlayerWidth, -PlayerWidth, 0));
+			CheckTile(GetActorLocation() - FVector(-PlayerWidth, -PlayerWidth, 0));
+		}
+		if (EnableDebugMode) currentTile->SetColor(FLinearColor::Green);
 	}
 }
 
@@ -107,7 +118,18 @@ void APlayerCharacter::SetCursor()
 		Controller->bShowMouseCursor = true;
 		Controller->bEnableClickEvents = true;
 		Controller->bEnableMouseOverEvents = true;
+		if (UGameViewportClient* Viewport = GetWorld()->GetGameViewport())
+		{
+			Viewport->SetMouseLockMode(EMouseLockMode::LockAlways); 
+			Viewport->Viewport->CaptureMouse(true);
+			Viewport->Viewport->LockMouseToViewport(true);
+		}
 	}
+}
+
+void APlayerCharacter::OnDeath()
+{
+	UGameplayStatics::OpenLevel(this, FName(*GetWorld()->GetName()), false);
 }
 
 void APlayerCharacter::UpdatePlayerRotation()
@@ -171,7 +193,7 @@ void APlayerCharacter::DashMoveDirection()
 
 void APlayerCharacter::Shoot()
 {
-	ShooterComp->Shoot(GetVelocity().Dot(ShooterComp->GetShootDirection(0)));
+	ShooterComp->Shoot(GetVelocity());
 }
 
 bool APlayerCharacter::CanDash()

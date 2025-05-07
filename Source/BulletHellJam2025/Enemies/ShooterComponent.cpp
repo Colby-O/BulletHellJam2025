@@ -34,6 +34,10 @@ void UShooterComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	FVector CurrentPosition = GetOwner()->GetActorLocation();
+	VelPrediction = (CurrentPosition - LastKnownPostion) / DeltaTime;
+	LastKnownPostion = CurrentPosition;
+
 	if (!IsEnabled) return;
 
 	RawRotation.Yaw += RotSpeed.X * DeltaTime;
@@ -46,7 +50,7 @@ void UShooterComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 	SetRelativeRotation(RawRotation);
 }
 
-void UShooterComponent::Shoot(float ExtraVel)
+void UShooterComponent::Shoot(FVector Vel)
 {
 	if (BulletClass)
 	{
@@ -61,7 +65,7 @@ void UShooterComponent::Shoot(float ExtraVel)
 			{
 				Bullet->SetLifeSpan(LifeSpan);
 				Bullet->SetFrom(FromTag);
-				Bullet->BulletSpeed = Bullet->BulletSpeed + FMath::Max(ExtraVel, 0);
+				Bullet->BulletSpeed = Bullet->BulletSpeed + FMath::Max(Vel.Dot(GetComponentRotation().RotateVector(dir).GetSafeNormal()), 0);
 			}
 		}
 	}
@@ -75,7 +79,7 @@ void UShooterComponent::SetFrom(FString Tag)
 FVector UShooterComponent::GetShootDirection(int index)
 {
 	if (index >= SpawnDirections.Num()) return FVector::ZeroVector;
-	return GetComponentRotation().RotateVector(SpawnDirections[index]);
+	return GetComponentRotation().RotateVector(SpawnDirections[index]).GetSafeNormal();
 }
 
 void UShooterComponent::ShootInternal()

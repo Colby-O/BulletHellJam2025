@@ -40,6 +40,12 @@ protected:
 	bool EnableTileFall = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	bool EnableDebugMode = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	bool EnableCornerFall = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float PlaneHeight = 60.0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
@@ -64,6 +70,7 @@ protected:
 	FTimerHandle DashTimeHandle;
 	APlayerController* Controller;
 	float PlayerWidth;
+	float PlayerHeight;
 	bool IsDashing;
 
 	void MoveForward(float Input);
@@ -81,6 +88,7 @@ protected:
 	void UpdatePlayerRotation();
 	void LimitSpeed();
 	void SetCursor();
+	void OnDeath();
 
 public:
 	void OnHit();

@@ -3,7 +3,7 @@
 #include "BulletHellJam2025/Enemies/Bullet.h"
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/Player/PlayerCharacter.h"
-#include "BulletHellJam2025/Grid/Tile.h"
+#include "BulletHellJam2025/Grid/Cell.h"
 #include <Kismet/GameplayStatics.h>
 
 TArray<ABaseEnemy*> ABaseEnemy::Enemies;
@@ -61,17 +61,7 @@ void ABaseEnemy::Tick(float DeltaTime)
 	HandleAttack();
 	HandleRotation();
 	HandleMovement(DeltaTime);
-
-	ATile* curTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
-	if (!curTile || curTile->HasFallen)
-	{
-		Destroy();
-		if (ClosestEnemy) 
-		{
-			ClosestEnemy->ClosestEnemy = ClosestEnemy->GetClosestEnemy();
-			ClosestEnemy->HoldPosition = false;
-		}
-	}
+	CheckForDeath();
 }
 
 FVector ABaseEnemy::GetDirectionToPlayer()
@@ -289,7 +279,7 @@ void ABaseEnemy::KnockbackStep()
 	float smoothedAlpha = FMath::InterpEaseOut(0.f, 1.f, alpha, 2.0f);
 	FVector newLocation = FMath::Lerp(KnockbackStart, KnockbackEnd, smoothedAlpha);
 	SetActorLocation(newLocation, true); 
-
+	CheckForDeath();
 	if (alpha >= 1.0f)
 	{
 		IsKnockingBack = false;
@@ -299,11 +289,25 @@ void ABaseEnemy::KnockbackStep()
 
 void ABaseEnemy::RelocatePlayer()
 {
-	if (DebugMovement) for (ATile* t : CurrentPath) t->SetColor(t->IsFalling ? FLinearColor::Red : t->DefaultColor);
+	if (DebugMovement) for (FCell* t : CurrentPath) t->SetColor(t->IsFalling ? FLinearColor::Red : t->Grid->DefaultColor);
 	CurrentPath.Empty();
 	FVector2Int curLoc = GridManager->WorldToGrid(GetActorLocation());
 	CurrentPath = GridManager->FindPath(curLoc, GridManager->WorldToGrid(Player->GetActorLocation()), FMath::Max(AttackRange / GridManager->TileSize - 1, SMALL_NUMBER), GetTilesToIgnore());
-	if (DebugMovement) for (ATile* t : CurrentPath) t->SetColor(FLinearColor::Blue);
+	if (DebugMovement) for (FCell* t : CurrentPath) t->SetColor(FLinearColor::Blue);
+}
+
+void ABaseEnemy::CheckForDeath()
+{
+	FCell* curTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
+	if (!curTile || curTile->HasFallen)
+	{
+		Destroy();
+		if (ClosestEnemy)
+		{
+			ClosestEnemy->ClosestEnemy = ClosestEnemy->GetClosestEnemy();
+			ClosestEnemy->HoldPosition = false;
+		}
+	}
 }
 
 TArray<FVector2Int> ABaseEnemy::GetTilesToIgnore()

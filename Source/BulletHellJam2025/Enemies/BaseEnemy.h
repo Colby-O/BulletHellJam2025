@@ -93,6 +93,7 @@ public:
 	void Knockback(FVector Direction);
 	void KnockbackStep();
 	void RelocatePlayer();
+	void CheckForDeath();
 	TArray<FVector2Int> GetTilesToIgnore();
 	ABaseEnemy* GetClosestEnemy();
 };

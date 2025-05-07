@@ -62,9 +62,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FVector> SpawnDirections;
 
+	FVector VelPrediction;
+	FVector LastKnownPostion;
+
 	void Enable();
 	void Disable();
-	void Shoot(float ExtraVel = 0);
+	void Shoot(FVector Vel = FVector::ZeroVector);
 	void ShootInternal();
 	void SetFrom(FString Tag);
 	FVector GetShootDirection(int index);
