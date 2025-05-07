@@ -152,7 +152,7 @@ ATile* AGridManager::GetNearestSafeTile(FVector2Int Start, FVector2Int& SafeLoca
 		}
 
 		ATile* curTile = GetTileAt(SafeLocation);
-		if (curTile && !NearTileWithState(&ATile::IsFalling, SafeLocation) && SafeLocation.Dist(Start) >= MinDist) return curTile;
+		if (curTile && curTile->IsEnable && !NearTileWithState(&ATile::IsFalling, SafeLocation) && SafeLocation.Dist(Start) >= MinDist) return curTile;
 	}
 
 	SafeLocation = FVector2Int(0, 0);
@@ -204,7 +204,7 @@ TArray<ATile*> AGridManager::FindPath(const FVector2Int& Start, const FVector2In
 		for (const FVector2Int& dir : directions) 
 		{
 			FVector2Int neighbor = cur->Point + dir;
-			if (!Tiles.Contains(neighbor) || closed.Contains(neighbor) || NearTileWithState(&ATile::HasFallen, neighbor) || TilesToAvoid.Contains(neighbor)) continue;
+			if (!Tiles.Contains(neighbor) || closed.Contains(neighbor) || !GetTileAt(neighbor)->IsEnable || NearTileWithState(&ATile::HasFallen, neighbor) || TilesToAvoid.Contains(neighbor)) continue;
 
 			float dst = cur->Dst + 1;
 			FNode** existing = open.Find(neighbor);
