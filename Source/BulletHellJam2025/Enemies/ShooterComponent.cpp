@@ -1,5 +1,7 @@
 #include "BulletHellJam2025/Enemies/ShooterComponent.h"
-#include "BulletHellJam2025/Enemies/Bullet.h"
+#include "BulletHellJam2025/Enemies/BulletManager.h"
+#include "BulletHellJam2025/Enemies/BulletManager.h"
+#include <Kismet/GameplayStatics.h>
 
 UShooterComponent::UShooterComponent()
 {
@@ -10,6 +12,8 @@ UShooterComponent::UShooterComponent()
 void UShooterComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	BulletManager = Cast<ABulletManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ABulletManager::StaticClass()));
 
 	RawRotation = GetRelativeRotation();
 
@@ -52,23 +56,18 @@ void UShooterComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 void UShooterComponent::Shoot(FVector Vel)
 {
-	if (BulletClass)
-	{
+
 		for (const FVector& dir : SpawnDirections) 
 		{
 			FVector spawnLoc = GetComponentLocation() + GetComponentRotation().RotateVector(dir.GetSafeNormal()) * Offset;
-			FRotator spawnRot = GetComponentRotation().RotateVector(dir.GetSafeNormal()).Rotation();
+			FVector forward = GetComponentRotation().RotateVector(dir.GetSafeNormal());
+			FRotator spawnRot = forward.Rotation();
 
-			FActorSpawnParameters spawnParams;
-			ABullet* Bullet = Cast<ABullet>(GetWorld()->SpawnActor<AActor>(BulletClass, spawnLoc, spawnRot, spawnParams));
-			if (Bullet) 
-			{
-				Bullet->SetLifeSpan(LifeSpan);
-				Bullet->SetFrom(FromTag);
-				Bullet->BulletSpeed = Bullet->BulletSpeed + FMath::Max(Vel.Dot(GetComponentRotation().RotateVector(dir).GetSafeNormal()), 0);
-			}
+			float speed = Speed + FMath::Max(Vel.Dot(forward), 0);
+
+			BulletManager->SpawnBullet(spawnLoc, spawnRot, Scale, forward, speed, LifeSpan, FromTag);
 		}
-	}
+
 }
 
 void UShooterComponent::SetFrom(FString Tag)

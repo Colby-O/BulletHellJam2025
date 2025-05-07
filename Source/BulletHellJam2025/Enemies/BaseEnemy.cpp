@@ -11,7 +11,6 @@ TArray<ABaseEnemy*> ABaseEnemy::Enemies;
 ABaseEnemy::ABaseEnemy()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	ABaseEnemy::Enemies.Add(this);
 }
 
 ABaseEnemy::~ABaseEnemy()
@@ -23,6 +22,8 @@ void ABaseEnemy::BeginPlay()
 {
 	Super::BeginPlay();
 
+	ABaseEnemy::Enemies.Add(this);
+
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 	Player = Cast<APlayerCharacter>(UGameplayStatics::GetActorOfClass(GetWorld(), APlayerCharacter::StaticClass()));
 
@@ -32,11 +33,8 @@ void ABaseEnemy::BeginPlay()
 	if (!ShooterComp) ShooterComp = FindComponentByClass<UShooterComponent>();
 	ShooterComp->SetFrom("Enemy");
 	FActorSpawnParameters spawnParams;
-	ABullet* Bullet = Cast<ABullet>(GetWorld()->SpawnActor<AActor>(ShooterComp->BulletClass, FVector::Zero(), FRotator::ZeroRotator, spawnParams));
 
-	AttackRange = ShooterComp->LifeSpan * Bullet->BulletSpeed;
-
-	Bullet->Destroy();
+	AttackRange = ShooterComp->LifeSpan * ShooterComp->Speed;
 
 	UE_LOG(LogTemp, Warning, TEXT("Attack Range: %f"), AttackRange);
 }

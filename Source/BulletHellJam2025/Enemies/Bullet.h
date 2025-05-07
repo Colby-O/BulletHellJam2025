@@ -4,38 +4,20 @@
 #include "GameFramework/Actor.h"
 #include "Bullet.generated.h"
 
-UCLASS()
-class BULLETHELLJAM2025_API ABullet : public AActor
+USTRUCT(BlueprintType)
+struct BULLETHELLJAM2025_API FBullet
 {
 	GENERATED_BODY()
 	
 public:	
-	ABullet();
+	FBullet();
+	FBullet(int InstanceID, FVector F, float S, float L, FString T = "");
+	~FBullet();
 
-protected:
-	virtual void BeginPlay() override;
-
-public:	
-	virtual void Tick(float DeltaTime) override;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float BulletSpeed = 0.5;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float LifeSpan = 1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FString FromTag;
-
-	UFUNCTION()
-	void OnOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-		UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
-		const FHitResult& SweepResult);
-
-	FTimerHandle LifeHandler;
-	UStaticMeshComponent* Mesh;
-
-	void SetLifeSpan(float Span);
-	void Remove();
-	void SetFrom(FString Tag);
+	int ID;
+	float Speed;
+	float LifeSpan;
+	float Life;
+	FVector Forward;
+	FString Tag;
 };

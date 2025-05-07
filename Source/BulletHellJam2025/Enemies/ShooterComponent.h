@@ -4,6 +4,7 @@
 #include "Components/SceneComponent.h"
 #include "ShooterComponent.generated.h"
 
+class ABulletManager;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class BULLETHELLJAM2025_API UShooterComponent : public USceneComponent
@@ -23,11 +24,17 @@ protected:
 public:	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TSubclassOf<AActor> BulletClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "References")
+	class ABulletManager* BulletManager;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FString FromTag;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector Scale = FVector(0.2, 0.2, 0.2);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Speed = 1000.0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Offset = 1;

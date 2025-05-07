@@ -29,6 +29,9 @@ public:
 	TMap<FVector2Int, ATile*> Tiles;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
+	bool DisableMap = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
 	int TileSize = 100;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")

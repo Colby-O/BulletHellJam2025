@@ -12,13 +12,13 @@ void AGridManager::BeginPlay()
 {
 	Super::BeginPlay();
 
-	GenerateGrid();
+	if (!DisableMap) GenerateGrid();
 }
 
 void AGridManager::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	UpdateTileVisibility();
+	if (!DisableMap) UpdateTileVisibility();
 }
 
 void AGridManager::UpdateTileVisibility()
@@ -191,6 +191,8 @@ TArray<ATile*> AGridManager::FindPath(const FVector2Int& Start, const FVector2In
 				}
 			}
 
+			while (path.Num() > 0 && path[0]->IsFalling) path.RemoveAt(0);
+			
 			Algo::Reverse(path);
 
 			for (auto& pair : open) delete pair.Value;

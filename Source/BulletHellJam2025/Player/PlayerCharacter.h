@@ -69,9 +69,11 @@ protected:
 	class UTapHandler* TapHandler;
 	FTimerHandle DashTimeHandle;
 	APlayerController* Controller;
+	FVector StartLocation;
 	float PlayerWidth;
 	float PlayerHeight;
 	bool IsDashing;
+	bool HasMoved;
 
 	void MoveForward(float Input);
 	void MoveRight(float Input);

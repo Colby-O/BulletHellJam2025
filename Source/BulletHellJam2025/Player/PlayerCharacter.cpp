@@ -56,6 +56,9 @@ void APlayerCharacter::BeginPlay()
 	Controller = Cast<APlayerController>(GetController());
 
 	SetCursor();
+
+	StartLocation = GetActorLocation();
+	HasMoved = false;
 }
 
 void APlayerCharacter::Tick(float DeltaTime)
@@ -64,11 +67,13 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 	UpdatePlayerRotation();
 	
+	if (!HasMoved) HasMoved = !GetActorLocation().Equals(StartLocation, 1.0f);
+
 	LimitSpeed();
 
 	ATile* currentTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
 	if (!IsDashing && (!currentTile || GetActorLocation().Z < -PlayerHeight)) OnDeath();
-	if (EnableTileFall) 
+	if (EnableTileFall && HasMoved)
 	{
 		CheckTile(GetActorLocation());
 		CheckTile(GetActorLocation() + FVector(PlayerWidth, 0, 0));
