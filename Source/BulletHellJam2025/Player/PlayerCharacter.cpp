@@ -1,8 +1,7 @@
 #include "BulletHellJam2025/Player/PlayerCharacter.h"
 #include "BulletHellJam2025/Core/TapHandler.h"
 #include "BulletHellJam2025/Grid/GridManager.h"
-#include "BulletHellJam2025/Grid/Tile.h"
-#include "BulletHellJam2025/Core/Vector2Int.h"
+#include "BulletHellJam2025/Grid/Cell.h"
 #include "BulletHellJam2025/Enemies/ShooterComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -71,8 +70,8 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 	LimitSpeed();
 
-	ATile* currentTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
-	if (!IsDashing && (!currentTile || GetActorLocation().Z < -PlayerHeight)) OnDeath();
+	FCell currentTile;
+	if (!IsDashing && (!GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()), currentTile) || GetActorLocation().Z < -PlayerHeight)) OnDeath();
 	if (EnableTileFall && HasMoved)
 	{
 		CheckTile(GetActorLocation());
@@ -87,7 +86,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 			CheckTile(GetActorLocation() - FVector(PlayerWidth, -PlayerWidth, 0));
 			CheckTile(GetActorLocation() - FVector(-PlayerWidth, -PlayerWidth, 0));
 		}
-		if (EnableDebugMode) currentTile->SetColor(FLinearColor::Green);
+		if (EnableDebugMode) GridManager->SetTileColor(currentTile, FLinearColor::Green);
 	}
 }
 
@@ -162,8 +161,7 @@ void APlayerCharacter::UpdatePlayerRotation()
 void APlayerCharacter::CheckTile(FVector pos)
 {
 	if (GetCharacterMovement()->IsFalling() && !IsDashing) return;
-	ATile* tile = GridManager->GetTileAt(GridManager->WorldToGrid(pos));
-	if (tile != nullptr) tile->TriggerFall();
+	//if (GridManager->GetTileAt(GridManager->WorldToGrid(pos))) tile->TriggerFall();
 }
 
 void APlayerCharacter::OnHit()

@@ -1,16 +1,25 @@
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/Grid/Tile.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include <Kismet/GameplayStatics.h>
 #include "GameFramework/Character.h"
 
 AGridManager::AGridManager()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	InstancedMesh = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("Tiles"));
+	InstancedMesh->SetupAttachment(RootComponent);
 }
 
 void AGridManager::BeginPlay()
 {
 	Super::BeginPlay();
+
+	InstancedMesh->SetStaticMesh(BaseMesh);
+	DynamicOutlineMaterial = UMaterialInstanceDynamic::Create(OutlineMat, this);
+	InstancedMesh->SetMaterial(0, BaseMat);
+	InstancedMesh->SetMaterial(1, DynamicOutlineMaterial);
 
 	if (!DisableMap) GenerateGrid();
 }
@@ -23,29 +32,30 @@ void AGridManager::Tick(float DeltaTime)
 
 void AGridManager::UpdateTileVisibility()
 {
-	ACharacter* player = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
-	if (!player) return;
+	//ACharacter* player = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+	//if (!player) return;
 
-	FVector playerLocation = player->GetActorLocation();
+	//FVector playerLocation = player->GetActorLocation();
 
-	for (const TPair<FVector2Int, AActor*>& pair : Tiles)
-	{
-		AActor* tile = pair.Value;
-		if (!tile) continue;
+	//for (const TPair<FVector2Int, AActor*>& pair : Tiles)
+	//{
+	//	AActor* tile = pair.Value;
+	//	if (!tile) continue;
 
-		float distance = FVector::Dist(tile->GetActorLocation(), playerLocation);
-		bool shouldBeActive = distance <= ViewDist;
+	//	float distance = FVector::Dist(tile->GetActorLocation(), playerLocation);
+	//	bool shouldBeActive = distance <= ViewDist;
 
-		tile->SetActorHiddenInGame(!shouldBeActive);
-		tile->SetActorEnableCollision(shouldBeActive);
-		//tile->SetActorTickEnabled(shouldBeActive);
-	}
+	//	tile->SetActorHiddenInGame(!shouldBeActive);
+	//	tile->SetActorEnableCollision(shouldBeActive);
+	//	//tile->SetActorTickEnabled(shouldBeActive);
+	//}
 }
 
-void AGridManager::RegisterTile(ATile* Tile)
+void AGridManager::RegisterTile(FCell Tile)
 {
-	FVector worldPT = Tile->GetActorLocation();
-	FVector2Int gridPT = WorldToGrid(worldPT);
+	FTransform worldTransform;
+	InstancedMesh->GetInstanceTransform(Tile.ID, worldTransform, true);
+	FVector2Int gridPT = WorldToGrid(worldTransform.GetLocation());
 	if (!Tiles.Contains(gridPT)) 
 	{
 		Tiles.Add(gridPT, Tile);
@@ -63,17 +73,20 @@ FVector AGridManager::GridToWorld(FVector2Int gridPt) const
 	return FVector(gridPt.X * TileSize, gridPt.Y * TileSize, 0);
 }
 
-ATile* AGridManager::GetTileAt(const FVector2Int& pt) const
+bool AGridManager::GetTileAt(const FVector2Int& pt, FCell& Cell)
 {
-	return Tiles.Contains(pt) ? Tiles[pt] : nullptr;
+	if (Tiles.Contains(pt)) Cell = Tiles[pt];
+	return Tiles.Contains(pt);
+}
+
+bool AGridManager::GetTileAt(const FVector2Int& pt) const
+{
+	return Tiles.Contains(pt);
 }
 
 void AGridManager::GenerateGrid()
 {
-	if (!TilePrefab|| MapRadius <= 0.f || TileSize <= 0.f) return;
-
-	UWorld* world = GetWorld();
-	if (!world) return;
+	if (!InstancedMesh || MapRadius <= 0.f || TileSize <= 0.f) return;
 
 	float halfTile = TileSize * 0.5f;
 
@@ -94,47 +107,77 @@ void AGridManager::GenerateGrid()
 				FVector spawnLocation = MapCenter + FVector(tileCenterX, tileCenterY, 0.f);
 				FRotator spawnRotation = FRotator::ZeroRotator;
 
-				world->SpawnActor<AActor>(BossStandPrefab, spawnLocation, spawnRotation);
+				SpawnTile(spawnLocation, spawnRotation, EdgeTileScale, false);
 			}
 			else if (Distance <= MapRadius)
 			{
 				bool isEdge = (MapRadius - Distance) <= edgeThreshold;
 
-				TSubclassOf<AActor> tileClassToUse = isEdge ? EdgePrefab : TilePrefab;
+				FVector scale = isEdge ? EdgeTileScale: TileScale;
 
 				FVector spawnLocation = MapCenter + FVector(tileCenterX, tileCenterY, 0.f);
 				FRotator spawnRotation = FRotator::ZeroRotator;
 
-				world->SpawnActor<AActor>(tileClassToUse, spawnLocation, spawnRotation);
+				SpawnTile(spawnLocation, spawnRotation, scale, isEdge);
 			}
 		}
 	}
+}
+
+void AGridManager::SpawnTile(FVector Location, FRotator Rotation, FVector Scale, bool IsEnabled) 
+{
+	FTransform transform;
+	transform.SetLocation(Location);
+	transform.SetRotation(Rotation.Quaternion());
+	transform.SetScale3D(Scale);
+	int instanceID = InstancedMesh->AddInstance(transform);
+	FCell cell(instanceID, IsEnabled);
+	RegisterTile(cell);
+	SetTileColor(cell, BaseOutlineColor);
+	UE_LOG(LogTemp, Warning, TEXT("Spawning Tile At: %s"), *transform.GetLocation().ToString());
+}
+
+void AGridManager::SetTileColorAt(FVector2Int Location, FLinearColor Color)
+{
+	FCell cell;
+	if (GetTileAt(Location, cell)) SetTileColor(cell, Color);
+}
+
+void AGridManager::SetTileColor(FCell Cell, FLinearColor Color)
+{
+	InstancedMesh->SetCustomDataValue(Cell.ID, 0, Color.R, true);
+	InstancedMesh->SetCustomDataValue(Cell.ID, 1, Color.G, true);
+	InstancedMesh->SetCustomDataValue(Cell.ID, 2, Color.B, true);
+
 }
 
 float AGridManager::GetHeuristic(const FVector2Int& A, const FVector2Int& B)
 {
 	TArray<FVector2Int> directions = { FVector2Int(1, 0), FVector2Int(-1, 0) , FVector2Int(0, 1), FVector2Int(0, -1) };
 
-	return FMath::Abs(A.X - B.X) + FMath::Abs(A.Y - B.Y) + (NearTileWithState(&ATile::IsFalling, A) ? 1000 : 0);
+	return FMath::Abs(A.X - B.X) + FMath::Abs(A.Y - B.Y) + (NearTileWithState(&FCell::IsFalling, A) ? 1000 : 0);
 }
 
-bool AGridManager::NearTileWithState(bool ATile::* State, FVector2Int Loc)
+bool AGridManager::NearTileWithState(bool FCell::* State, FVector2Int Loc)
 {
 	TArray<FVector2Int> directions = { FVector2Int(1, 0), FVector2Int(-1, 0) , FVector2Int(0, 1), FVector2Int(0, -1) };
 
 	if (!GetTileAt(Loc)) return true;
-
-	bool state = GetTileAt(Loc)->*State;
+	
+	FCell tile;
+	GetTileAt(Loc, std::ref(tile));
+	bool state = tile.*State;
 
 	for (FVector2Int dir : directions)
 	{
-		if (ATile* tile = GetTileAt(Loc + dir)) state |= tile->*State;
+		FCell tileDir;
+		if (GetTileAt(Loc + dir, tileDir)) state |= tile.*State;
 	}
 
 	return state;
 }
 
-ATile* AGridManager::GetNearestSafeTile(FVector2Int Start, FVector2Int& SafeLocation, float MinDist)
+bool AGridManager::GetNearestSafeTile(FVector2Int Start, FVector2Int& SafeLocation, float MinDist)
 {
 	TArray<FVector2Int> directions = { FVector2Int(1, 0), FVector2Int(-1, 0) , FVector2Int(0, 1), FVector2Int(0, -1) };
 
@@ -151,15 +194,15 @@ ATile* AGridManager::GetNearestSafeTile(FVector2Int Start, FVector2Int& SafeLoca
 			if (GetTileAt(SafeLocation + dir)) queue.Enqueue(SafeLocation + dir);
 		}
 
-		ATile* curTile = GetTileAt(SafeLocation);
-		if (curTile && curTile->IsEnable && !NearTileWithState(&ATile::IsFalling, SafeLocation) && SafeLocation.Dist(Start) >= MinDist) return curTile;
+		FCell curTile;
+		if (GetTileAt(SafeLocation, std::ref(curTile)) && curTile.IsEnabled && !NearTileWithState(&FCell::IsFalling, SafeLocation) && SafeLocation.Dist(Start) >= MinDist) return true;
 	}
 
 	SafeLocation = FVector2Int(0, 0);
-	return nullptr;
+	return false;
 }
 
-TArray<ATile*> AGridManager::FindPath(const FVector2Int& Start, const FVector2Int& Goal, float MaxDist, TArray<FVector2Int> TilesToAvoid)
+TArray<FVector2Int> AGridManager::FindPath(const FVector2Int& Start, const FVector2Int& Goal, float MaxDist, TArray<FVector2Int> TilesToAvoid)
 {
 	TArray<FVector2Int> directions = { FVector2Int(1, 0), FVector2Int(-1, 0) , FVector2Int(0, 1), FVector2Int(0, -1) };
 
@@ -182,16 +225,21 @@ TArray<ATile*> AGridManager::FindPath(const FVector2Int& Start, const FVector2In
 
 		if (cur->Point.Dist(Goal) <= MaxDist)
 		{
-			TArray<ATile*> path;
+			TArray<FCell> pathCells;
+			TArray<FVector2Int> path;
 			for (FNode* node = cur; node != nullptr; node = node->Parent)
 			{
-				if (ATile* tile = GetTileAt(node->Point))
+				FCell tile;
+				if (GetTileAt(node->Point, std::ref(tile)))
 				{
-					path.Add(tile);
+					FTransform tileTransform;
+					InstancedMesh->GetInstanceTransform(tile.ID, tileTransform, true);
+					path.Add(WorldToGrid(tileTransform.GetLocation()));
+					pathCells.Add(tile);
 				}
 			}
 
-			while (path.Num() > 0 && path[0]->IsFalling) path.RemoveAt(0);
+			while (path.Num() > 0 && pathCells[0].IsFalling) path.RemoveAt(0);
 			
 			Algo::Reverse(path);
 
@@ -206,7 +254,9 @@ TArray<ATile*> AGridManager::FindPath(const FVector2Int& Start, const FVector2In
 		for (const FVector2Int& dir : directions) 
 		{
 			FVector2Int neighbor = cur->Point + dir;
-			if (!Tiles.Contains(neighbor) || closed.Contains(neighbor) || !GetTileAt(neighbor)->IsEnable || NearTileWithState(&ATile::HasFallen, neighbor) || TilesToAvoid.Contains(neighbor)) continue;
+			FCell neighbourTile;
+			GetTileAt(neighbor, std::ref(neighbourTile));
+			if (!Tiles.Contains(neighbor) || closed.Contains(neighbor) || !neighbourTile.IsEnabled || NearTileWithState(&FCell::HasFallen, neighbor) || TilesToAvoid.Contains(neighbor)) continue;
 
 			float dst = cur->Dst + 1;
 			FNode** existing = open.Find(neighbor);

@@ -27,7 +27,7 @@ void ATile::BeginPlay()
 		correctLocation.Z = RoundToNearestTileSize(correctLocation.Z, GridManager->TileSize);
 		SetActorLocation(correctLocation);
 
-		GridManager->RegisterTile(this);
+		//GridManager->RegisterTile(this);
 	}
 
 	UMaterialInstanceDynamic* DynMaterial = UMaterialInstanceDynamic::Create(Mat, this);

@@ -3,7 +3,8 @@
 #include "BulletHellJam2025/Enemies/Bullet.h"
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/Player/PlayerCharacter.h"
-#include "BulletHellJam2025/Grid/Tile.h"
+#include "BulletHellJam2025/Grid/Cell.h"
+#include "BulletHellJam2025/Core/Vector2Int.h"
 #include <Kismet/GameplayStatics.h>
 
 TArray<ABaseEnemy*> ABaseEnemy::Enemies;
@@ -71,9 +72,8 @@ FVector ABaseEnemy::GetDirectionToPlayer()
 FVector ABaseEnemy::GetDirectionToNextTile()
 {
 	if (CurrentPath.IsEmpty()) return FVector::ZeroVector;
-	ATile* next = CurrentPath[0];
-	if (!next) return FVector::ZeroVector;
-	FVector rawDirection = (next->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+	FVector2Int next = CurrentPath[0];
+	FVector rawDirection = (GridManager->GridToWorld(next) - GetActorLocation()).GetSafeNormal();
 	return FVector(rawDirection.X, rawDirection.Y, 0);
 }
 
@@ -93,9 +93,9 @@ void ABaseEnemy::UpdateState()
 	LastState = CurrentState;
 
 	FVector2Int curLoc = GridManager->WorldToGrid(GetActorLocation());
-	ATile* currentTile = GridManager->GetTileAt(curLoc);
+	FCell currentTile;
 
-	if (currentTile && currentTile->IsFalling)
+	if (GridManager->GetTileAt(curLoc, currentTile) && currentTile.IsFalling)
 	{
 		CurrentState = EMovementState::MovingOffTile;
 	}
@@ -122,7 +122,12 @@ void ABaseEnemy::LocateTarget()
 {
 	UpdateState();
 
-	if (DebugMovement) for (ATile* t : CurrentPath) t->SetColor(t->IsFalling ? FLinearColor::Red : t->DefaultColor);
+	if (DebugMovement) for (FVector2Int loc : CurrentPath) 
+	{
+		FCell cell;
+		GridManager->GetTileAt(loc, std::ref(cell));
+		GridManager->SetTileColorAt(loc, cell.IsFalling ? GridManager->FallOutlineColor : GridManager->BaseOutlineColor);
+	}
 
 	UEnum* EnumPtr = StaticEnum<EMovementState>();
 	if (EnumPtr)
@@ -142,7 +147,6 @@ void ABaseEnemy::LocateTarget()
 	}
 
 	FVector2Int curLoc = GridManager->WorldToGrid(GetActorLocation());
-	ATile* currentTile = GridManager->GetTileAt(curLoc);
 
 	if (CurrentState == EMovementState::Chasing)
 	{
@@ -152,7 +156,7 @@ void ABaseEnemy::LocateTarget()
 			RelocatePlayer();
 			GetWorld()->GetTimerManager().SetTimer(ChaseTimerHandle, this, &ABaseEnemy::RelocatePlayer, Memory, true);
 		}
-		else if (!CurrentPath.IsEmpty() && currentTile == CurrentPath[0])
+		else if (!CurrentPath.IsEmpty() && curLoc == CurrentPath[0])
 		{
 			CurrentPath.RemoveAt(0);
 		}
@@ -163,7 +167,7 @@ void ABaseEnemy::LocateTarget()
 
 		if (!CurrentPath.IsEmpty()) 
 		{
-			UE_LOG(LogTemp, Log, TEXT("Next Tile Loc: %s"), *(GridManager->WorldToGrid(CurrentPath[0]->GetActorLocation()).ToString()));
+			UE_LOG(LogTemp, Log, TEXT("Next Tile Loc: %s"), *CurrentPath[0].ToString());
 		}
 	}
 	else if (CurrentState == EMovementState::MovingOffTile)
@@ -188,7 +192,7 @@ void ABaseEnemy::LocateTarget()
 					CurrentPath = GridManager->FindPath(curLoc, safeLoc, SMALL_NUMBER);
 				}
 		}
-		else if (ClosestEnemy && ClosestEnemy->HoldPosition && !CurrentPath.IsEmpty() && currentTile == CurrentPath[0])
+		else if (ClosestEnemy && ClosestEnemy->HoldPosition && !CurrentPath.IsEmpty() && curLoc == CurrentPath[0])
 		{
 			CurrentPath.RemoveAt(0);
 		}
@@ -200,8 +204,13 @@ void ABaseEnemy::LocateTarget()
 		}
 	}
 
-	if (!CurrentPath.IsEmpty() && GridManager->GetTileAt(curLoc) == CurrentPath[0]) CurrentPath.RemoveAt(0);
-	if (DebugMovement) for (ATile* t : CurrentPath) t->SetColor(FLinearColor::Blue);
+	if (!CurrentPath.IsEmpty() && curLoc == CurrentPath[0]) CurrentPath.RemoveAt(0);
+	if (DebugMovement) for (FVector2Int loc : CurrentPath)
+	{
+		FCell cell;
+		GridManager->GetTileAt(loc, std::ref(cell));
+		GridManager->SetTileColorAt(loc, FLinearColor::Blue);
+	}
 }
 
 void ABaseEnemy::HandleAttack()
@@ -239,10 +248,9 @@ void ABaseEnemy::HandleMovement(float DeltaTime)
 
 	if (!CurrentPath.IsEmpty() && (newDirection + direction).IsNearlyZero()) 
 	{
-		FVector tileLoc = CurrentPath[0]->GetActorLocation();
+		FVector tileLoc = GridManager->GridToWorld(CurrentPath[0]);
 		SetActorLocation(FVector(tileLoc.X, tileLoc.Y, GetActorLocation().Z));
 	}
-	
 }
 
 void ABaseEnemy::MoveTowards(float DeltaTime, FVector Direction) 
@@ -287,17 +295,29 @@ void ABaseEnemy::KnockbackStep()
 
 void ABaseEnemy::RelocatePlayer()
 {
-	if (DebugMovement) for (ATile* t : CurrentPath) t->SetColor(t->IsFalling ? FLinearColor::Red : t->DefaultColor);
+	if (DebugMovement) for (FVector2Int loc : CurrentPath)
+	{
+		FCell cell;
+		GridManager->GetTileAt(loc, std::ref(cell));
+		GridManager->SetTileColorAt(loc, cell.IsFalling ? GridManager->FallOutlineColor : GridManager->BaseOutlineColor);
+	}
+
 	CurrentPath.Empty();
 	FVector2Int curLoc = GridManager->WorldToGrid(GetActorLocation());
 	CurrentPath = GridManager->FindPath(curLoc, GridManager->WorldToGrid(Player->GetActorLocation()), FMath::Max(AttackRange / GridManager->TileSize - 1, SMALL_NUMBER), GetTilesToIgnore());
-	if (DebugMovement) for (ATile* t : CurrentPath) t->SetColor(FLinearColor::Blue);
+
+	if (DebugMovement) for (FVector2Int loc : CurrentPath)
+	{
+		FCell cell;
+		GridManager->GetTileAt(loc, std::ref(cell));
+		GridManager->SetTileColorAt(loc, FLinearColor::Blue);
+	}
 }
 
 void ABaseEnemy::CheckForDeath()
 {
-	ATile* curTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
-	if (!curTile || curTile->HasFallen)
+	FCell curTile;
+	if (!GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()), curTile) || curTile.HasFallen)
 	{
 		Destroy();
 		if (ClosestEnemy)

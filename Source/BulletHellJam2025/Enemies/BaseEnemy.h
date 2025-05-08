@@ -2,10 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "BulletHellJam2025/Core/Vector2Int.h"
 #include "BaseEnemy.generated.h"
-
-class ATile;
-struct FVector2Int;
 
 UENUM(BlueprintType)
 enum EMovementState {
@@ -76,7 +74,7 @@ public:
 	EMovementState CurrentState;
 	EMovementState LastState = EMovementState::Idle;
 
-	TArray<ATile*> CurrentPath;
+	TArray<FVector2Int> CurrentPath;
 
 	FTimerHandle KnockbackTimerHandle;
 	FTimerHandle ChaseTimerHandle;
