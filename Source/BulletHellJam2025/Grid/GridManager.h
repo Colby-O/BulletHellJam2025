@@ -65,6 +65,7 @@ public:
 	ATile* GetTileAt(const FVector2Int& pt) const;
 
 	void GenerateGrid();
+	void ResetGrid();
 
 	float GetHeuristic(const FVector2Int& A, const FVector2Int& B);
 	bool NearTileWithState(bool ATile::* State, FVector2Int Loc);

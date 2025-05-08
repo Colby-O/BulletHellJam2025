@@ -5,9 +5,6 @@
 #include "BulletHellJam2025/Enemies/Bullet.h"
 #include "BulletManager.generated.h"
 
-class AGridManager;
-class APlayerCharacter;
-
 UCLASS()
 class BULLETHELLJAM2025_API ABulletManager : public AActor
 {
@@ -30,14 +27,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	UMaterialInterface* BaseMat;
 
-	APlayerCharacter* Player;
-	AGridManager* GridManager;
+	class AGameManager* GameManager;
+	class AGridManager* GridManager;
+	class APlayerCharacter* Player;
 	UInstancedStaticMeshComponent* InstancedMesh;
 	UMaterialInstanceDynamic* DynamicMat;
+
+	bool IsMarkedForReset = false;
 
 	void SpawnBullet(FVector Location, FRotator Rotation, FVector Scale, FVector Forward, float Speed, float LifeSpan, float CollisionDist, FLinearColor Color = FLinearColor::White, FString Tag = "");
 	void Update(float DeltaTime);
 	void ProcessCollisions();
 	void DestroyBullet(int InstanceID, int Index);
 	void SetBulletColor(FBullet Bullet, FLinearColor Color);
+	void ResetBullets();
 };

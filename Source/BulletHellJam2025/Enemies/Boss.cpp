@@ -1,4 +1,5 @@
 #include "BulletHellJam2025/Enemies/Boss.h"
+#include "BulletHellJam2025/Enemies/ShooterComponent.h"
 
 ABoss::ABoss()
 {
@@ -16,5 +17,10 @@ void ABoss::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+void ABoss::ResetBoss()
+{
+	ShooterComp->ResetShooter();
 }
 

@@ -37,10 +37,13 @@ public:
 	bool DebugMovement = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "References")
-	class APlayerCharacter* Player;
+	class AGameManager* GameManager;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "References")
 	class AGridManager* GridManager;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "References")
+	class APlayerCharacter* Player;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	class UShooterComponent* ShooterComp;

@@ -31,6 +31,9 @@ protected:
 	UStaticMeshComponent* GunMesh;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "References")
+	class AGameManager* GameManager;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "References")
 	class AGridManager* GridManager;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
@@ -69,7 +72,7 @@ protected:
 	class UTapHandler* TapHandler;
 	FTimerHandle DashTimeHandle;
 	APlayerController* Controller;
-	FVector StartLocation;
+	FTransform StartTransform;
 	float PlayerWidth;
 	float PlayerHeight;
 	bool IsDashing;
@@ -94,4 +97,5 @@ protected:
 
 public:
 	void OnHit();
+	void ResetPlayer();
 };

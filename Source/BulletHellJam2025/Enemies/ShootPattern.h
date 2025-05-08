@@ -47,8 +47,12 @@ public:
 	FVector RotMax;
 
 	UPROPERTY(EditAnywhere)
-	float LifeSpan = 1.0;
+	float Distance = 1000;
+
+	float LifeSpan;
 
 	UPROPERTY(EditAnywhere)
 	TArray<FVector> SpawnDirections;
+
+	void Awake();
 };

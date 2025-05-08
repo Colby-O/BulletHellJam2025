@@ -30,11 +30,11 @@ public:
 
 	void StartFall();
 	void Fall();
+	void ForceStopFall();
 	void SetColor(FLinearColor Color);
 
 	UStaticMeshComponent* Mesh;
 	UMaterialInterface* Mat;
-
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite);
 	bool IsEnable = true;

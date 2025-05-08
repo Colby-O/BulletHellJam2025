@@ -18,7 +18,11 @@ void UShooterComponent::BeginPlay()
 	RawRotation = GetRelativeRotation();
 	
 	int i = 0;
-	for (FShootPattern p : ShootPatterns) p.ID = i++;
+	for (FShootPattern& p : ShootPatterns) 
+	{
+		p.ID = i++;
+		p.Awake();
+	}
 
 	if (ShootPatterns.Num() > 0) 
 	{
@@ -78,6 +82,7 @@ void UShooterComponent::Shoot(FVector Vel)
 
 			float speed = SelectedPattern.Speed + FMath::Max(Vel.Dot(forward), 0);
 
+			UE_LOG(LogTemp, Warning, TEXT("Bullet Spawning With Life Span %f"), SelectedPattern.LifeSpan);
 			BulletManager->SpawnBullet(spawnLoc, spawnRot, Scale, forward, speed, SelectedPattern.LifeSpan, CollisionDist, BulletColor, FromTag);
 		}
 }
@@ -101,6 +106,18 @@ void UShooterComponent::NextPattern()
 	Disable(true);
 	SelectedPatternIndex = (SelectedPatternIndex + 1) % ShootPatterns.Num();
 	SelectedPattern = ShootPatterns[SelectedPatternIndex];
+	Enable(true);
+}
+
+void UShooterComponent::ResetShooter()
+{
+	Disable(true);
+	Timer = 0;
+	if (ShootPatterns.Num() > 0) 
+	{
+		SelectedPatternIndex = 0;
+		SelectedPattern = ShootPatterns[0];
+	}
 	Enable(true);
 }
 

@@ -60,6 +60,7 @@ public:
 	void SetFrom(FString Tag);
 	FVector GetShootDirection(int index);
 	void NextPattern();
+	void ResetShooter();
 
 protected:
 	FRotator RawRotation;

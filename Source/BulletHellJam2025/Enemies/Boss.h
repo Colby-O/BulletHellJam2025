@@ -18,4 +18,8 @@ protected:
 public:	
 	virtual void Tick(float DeltaTime) override;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
+	class UShooterComponent* ShooterComp;
+
+	void ResetBoss();
 };

@@ -2,13 +2,21 @@
 
 FShootPattern::FShootPattern()
 {
+
 }
 
 FShootPattern::~FShootPattern()
 {
 }
 
+void FShootPattern::Awake()
+{
+	LifeSpan = !FMath::IsNearlyZero(Speed) ? Distance / Speed : 0;
+	UE_LOG(LogTemp, Warning, TEXT("Set BulletLife Span To %f from %f / %f"), LifeSpan, Distance, Speed);
+}
+
 bool FShootPattern::operator==(const FShootPattern& Other)
 {
 	return ID == Other.ID;
 }
+

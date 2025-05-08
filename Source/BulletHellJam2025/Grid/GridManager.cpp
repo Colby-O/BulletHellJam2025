@@ -111,6 +111,14 @@ void AGridManager::GenerateGrid()
 	}
 }
 
+void AGridManager::ResetGrid()
+{
+	for (TPair<FVector2Int, ATile*>& pair : Tiles)
+	{
+		pair.Value->ForceStopFall();
+	}
+}
+
 float AGridManager::GetHeuristic(const FVector2Int& A, const FVector2Int& B)
 {
 	TArray<FVector2Int> directions = { FVector2Int(1, 0), FVector2Int(-1, 0) , FVector2Int(0, 1), FVector2Int(0, -1) };

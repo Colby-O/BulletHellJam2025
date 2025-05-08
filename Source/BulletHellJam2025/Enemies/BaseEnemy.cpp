@@ -5,6 +5,7 @@
 #include "BulletHellJam2025/Player/PlayerCharacter.h"
 #include "BulletHellJam2025/Enemies/ShootPattern.h"
 #include "BulletHellJam2025/Grid/Tile.h"
+#include "BulletHellJam2025/GameManager.h"
 #include <Kismet/GameplayStatics.h>
 
 TArray<ABaseEnemy*> ABaseEnemy::Enemies;
@@ -25,8 +26,13 @@ void ABaseEnemy::BeginPlay()
 
 	ABaseEnemy::Enemies.Add(this);
 
+	GameManager = Cast<AGameManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGameManager::StaticClass()));
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 	Player = Cast<APlayerCharacter>(UGameplayStatics::GetActorOfClass(GetWorld(), APlayerCharacter::StaticClass()));
+
+	FVector currenLoc = GetActorLocation();
+	currenLoc.Z = Player->GetActorLocation().Z;
+	SetActorLocation(currenLoc);
 
 	CurrentState = EMovementState::Idle;
 	LastState = EMovementState::Idle;
@@ -42,7 +48,7 @@ void ABaseEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	AttackRange = ShooterComp->SelectedPattern.LifeSpan * ShooterComp->SelectedPattern.Speed;
+	AttackRange = ShooterComp->SelectedPattern.Distance;
 
 	if (IsKnockingBack) return;
 
@@ -170,7 +176,7 @@ void ABaseEnemy::LocateTarget()
 	else if (CurrentState == EMovementState::MovingOffTile)
 	{
 		FVector2Int safeLoc;
-		if (GridManager->GetNearestSafeTile(curLoc, safeLoc)) 
+		if (GridManager->GetNearestSafeTile(curLoc, safeLoc))
 		{
 			CurrentPath.Empty();
 			CurrentPath = GridManager->FindPath(curLoc, safeLoc, 0.5f);
@@ -277,9 +283,16 @@ void ABaseEnemy::KnockbackStep()
 	float alpha = KnockbackElapsed / KnockbackRate;
 	float smoothedAlpha = FMath::InterpEaseOut(0.f, 1.f, alpha, 2.0f);
 	FVector newLocation = FMath::Lerp(KnockbackStart, KnockbackEnd, smoothedAlpha);
-	SetActorLocation(newLocation, true); 
-	CheckForDeath();
-	if (alpha >= 1.0f)
+
+	ATile* nextTile = GridManager->GetTileAt(GridManager->WorldToGrid(newLocation));
+
+	if (!nextTile || (nextTile && nextTile->IsEnable)) 
+	{
+		SetActorLocation(newLocation, true);
+		CheckForDeath();
+	}
+	
+	if (alpha >= 1.0f || (nextTile && !nextTile->IsEnable))
 	{
 		IsKnockingBack = false;
 		GetWorld()->GetTimerManager().ClearTimer(KnockbackTimerHandle);

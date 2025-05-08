@@ -1,6 +1,7 @@
 #include "BulletHellJam2025/Player/PlayerCharacter.h"
 #include "BulletHellJam2025/Core/TapHandler.h"
 #include "BulletHellJam2025/Grid/GridManager.h"
+#include "BulletHellJam2025/GameManager.h"
 #include "BulletHellJam2025/Grid/Tile.h"
 #include "BulletHellJam2025/Core/Vector2Int.h"
 #include "BulletHellJam2025/Enemies/ShooterComponent.h"
@@ -47,6 +48,7 @@ void APlayerCharacter::BeginPlay()
 	PlayerWidth = 2.0 * Capsule->GetScaledCapsuleRadius();
 	PlayerHeight = 2.0 * Capsule->GetScaledCapsuleHalfHeight();
 
+	GameManager = Cast<AGameManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGameManager::StaticClass()));
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 
 	GetCharacterMovement()->MaxWalkSpeed = PlayerSpeed;
@@ -57,7 +59,7 @@ void APlayerCharacter::BeginPlay()
 
 	SetCursor();
 
-	StartLocation = GetActorLocation();
+	StartTransform = GetActorTransform();
 	HasMoved = false;
 }
 
@@ -67,12 +69,13 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 	UpdatePlayerRotation();
 	
-	if (!HasMoved) HasMoved = !GetActorLocation().Equals(StartLocation, 1.0f);
+	if (!HasMoved) HasMoved = !GetActorLocation().Equals(StartTransform.GetLocation(), 1.0f);
 
 	LimitSpeed();
 
 	ATile* currentTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
-	if (!IsDashing && (!currentTile || GetActorLocation().Z < -PlayerHeight)) OnDeath();
+	if (!IsDashing && (!currentTile || GetActorLocation().Z < -PlayerHeight || GetActorLocation().Z > 2.0 * PlayerHeight)) OnDeath();
+
 	if (EnableTileFall && HasMoved)
 	{
 		CheckTile(GetActorLocation());
@@ -134,7 +137,14 @@ void APlayerCharacter::SetCursor()
 
 void APlayerCharacter::OnDeath()
 {
-	UGameplayStatics::OpenLevel(this, FName(*GetWorld()->GetName()), false);
+	GameManager->RestartGame();
+}
+
+void APlayerCharacter::ResetPlayer()
+{
+	IsDashing = false;
+	GetCharacterMovement()->Velocity = FVector::ZeroVector;
+	SetActorTransform(StartTransform);
 }
 
 void APlayerCharacter::UpdatePlayerRotation()
@@ -168,7 +178,7 @@ void APlayerCharacter::CheckTile(FVector pos)
 
 void APlayerCharacter::OnHit()
 {
-	UGameplayStatics::OpenLevel(this, FName(*GetWorld()->GetName()), false);
+	OnDeath();
 }
 
 void APlayerCharacter::DashForward()
@@ -215,7 +225,6 @@ void APlayerCharacter::Dash(FVector Direction)
 		LaunchCharacter(FVector(normal.X, normal.Y, 0) * DashForce, true, true);
 		GetWorldTimerManager().SetTimer(DashTimeHandle, this, &APlayerCharacter::StopDashing, DashCooldown, false);
 	}
-
 }
 
 void APlayerCharacter::StopDashing()

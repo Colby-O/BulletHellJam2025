@@ -90,6 +90,18 @@ void ATile::Fall()
 	SetActorLocation(pos);
 }
 
+void ATile::ForceStopFall()
+{
+	GetWorld()->GetTimerManager().ClearTimer(TimerHandler);
+	IsFalling = false;
+	HasFallen = false;
+	SetColor(DefaultColor);
+	FVector pos = GetActorLocation();
+	pos.Z = 0;
+	SetActorLocation(pos);
+	
+}
+
 void ATile::SetColor(FLinearColor Color)
 {
 	if (!IsEnable) return;
