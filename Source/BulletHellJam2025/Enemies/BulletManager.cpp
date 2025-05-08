@@ -21,6 +21,7 @@ void ABulletManager::BeginPlay()
 	Player = UGameplayStatics::GetPlayerController(GetWorld(), 0);
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 
+	if (BaseMat) InstancedMesh->SetMaterial(0, BaseMat);
 	InstancedMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	if (BaseMesh) 
@@ -43,7 +44,6 @@ void ABulletManager::SpawnBullet(FVector Location, FRotator Rotation, FVector Sc
 	transform.SetRotation(Rotation.Quaternion());
 	transform.SetScale3D(Scale);
 	int instanceID = InstancedMesh->AddInstance(transform);
-	if (BaseMat) InstancedMesh->SetMaterial(instanceID, BaseMat);
 	Bullets.Add(FBullet(instanceID, Forward, Speed, LifeSpan, Tag));
 	UE_LOG(LogTemp, Warning, TEXT("Spawning Bullet At: %s"), *transform.GetLocation().ToString());
 }
