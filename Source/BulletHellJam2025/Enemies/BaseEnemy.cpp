@@ -3,6 +3,7 @@
 #include "BulletHellJam2025/Enemies/Bullet.h"
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/Player/PlayerCharacter.h"
+#include "BulletHellJam2025/Enemies/ShootPattern.h"
 #include "BulletHellJam2025/Grid/Tile.h"
 #include <Kismet/GameplayStatics.h>
 
@@ -34,14 +35,14 @@ void ABaseEnemy::BeginPlay()
 	ShooterComp->SetFrom("Enemy");
 	FActorSpawnParameters spawnParams;
 
-	AttackRange = ShooterComp->LifeSpan * ShooterComp->Speed;
-
 	UE_LOG(LogTemp, Warning, TEXT("Attack Range: %f"), AttackRange);
 }
 
 void ABaseEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	AttackRange = ShooterComp->SelectedPattern.LifeSpan * ShooterComp->SelectedPattern.Speed;
 
 	if (IsKnockingBack) return;
 
@@ -259,7 +260,7 @@ void ABaseEnemy::MoveTowards(float DeltaTime, FVector Direction)
 
 void ABaseEnemy::Knockback(FVector Direction)
 {
-	if (IsKnockingBack) return;
+	//if (IsKnockingBack) return;
 
 	KnockbackStart = GetActorLocation();
 	KnockbackEnd = KnockbackStart + Direction * KnockbackAmount;

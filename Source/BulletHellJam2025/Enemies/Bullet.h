@@ -11,13 +11,14 @@ struct BULLETHELLJAM2025_API FBullet
 	
 public:	
 	FBullet();
-	FBullet(int InstanceID, FVector F, float S, float L, FString T = "");
+	FBullet(int InstanceID, FVector F, float S, float L, float hitDist, FString T = "");
 	~FBullet();
 
 	int ID;
 	float Speed;
 	float LifeSpan;
 	float Life;
+	float CollisionDist;
 	FVector Forward;
 	FString Tag;
 };

@@ -4,6 +4,6 @@
 
 FBullet::FBullet() {}
 
-FBullet::FBullet(int InstanceID, FVector F, float S, float LS, FString T) : ID(InstanceID), Forward(F), Speed(S), LifeSpan(LS), Tag(T), Life(0.0) {}
+FBullet::FBullet(int InstanceID, FVector F, float S, float LS, float hitDist, FString T) : ID(InstanceID), Forward(F), Speed(S), LifeSpan(LS), CollisionDist(hitDist), Tag(T), Life(0.0) {}
 
 FBullet::~FBullet() {}

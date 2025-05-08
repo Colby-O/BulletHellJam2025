@@ -18,10 +18,15 @@ void ABulletManager::BeginPlay()
 {
 	Super::BeginPlay();
 
-	Player = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+	Player = Cast<APlayerCharacter>(UGameplayStatics::GetActorOfClass(GetWorld(), APlayerCharacter::StaticClass()));
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 
-	if (BaseMat) InstancedMesh->SetMaterial(0, BaseMat);
+	if (BaseMat) 
+	{
+		InstancedMesh->NumCustomDataFloats = 3;
+		DynamicMat = UMaterialInstanceDynamic::Create(BaseMat, this);
+		InstancedMesh->SetMaterial(0, DynamicMat);
+	}
 	InstancedMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	if (BaseMesh) 
@@ -37,14 +42,23 @@ void ABulletManager::Tick(float DeltaTime)
 	Update(DeltaTime);
 }
 
-void ABulletManager::SpawnBullet(FVector Location, FRotator Rotation, FVector Scale, FVector Forward, float Speed, float LifeSpan, FString Tag)
+void ABulletManager::SetBulletColor(FBullet Bullet, FLinearColor Color)
+{
+	InstancedMesh->SetCustomDataValue(Bullet.ID, 0, Color.R, false);
+	InstancedMesh->SetCustomDataValue(Bullet.ID, 1, Color.G, false);
+	InstancedMesh->SetCustomDataValue(Bullet.ID, 2, Color.B, true);
+}
+
+void ABulletManager::SpawnBullet(FVector Location, FRotator Rotation, FVector Scale, FVector Forward, float Speed, float LifeSpan, float CollisionDist, FLinearColor Color, FString Tag)
 {
 	FTransform transform;
 	transform.SetLocation(Location);
 	transform.SetRotation(Rotation.Quaternion());
 	transform.SetScale3D(Scale);
 	int instanceID = InstancedMesh->AddInstance(transform);
-	Bullets.Add(FBullet(instanceID, Forward, Speed, LifeSpan, Tag));
+	FBullet bullet = FBullet(instanceID, Forward, Speed, LifeSpan, CollisionDist, Tag);
+	Bullets.Add(bullet);
+	SetBulletColor(bullet, Color);
 	UE_LOG(LogTemp, Warning, TEXT("Spawning Bullet At: %s"), *transform.GetLocation().ToString());
 }
 
@@ -90,13 +104,14 @@ void ABulletManager::ProcessCollisions()
 		
 		for (AActor* actor : actors) 
 		{
-			if (FVector::Dist(actor->GetActorLocation(), bulletTransform.GetLocation()) < CollisionDist)
+			if (FVector::Dist(actor->GetActorLocation(), bulletTransform.GetLocation()) < bullet.CollisionDist)
 			{
 				UE_LOG(LogTemp, Warning, TEXT("Bullet Hit: %s"), *actor->GetName());
 				if (actor->IsA(APlayerCharacter::StaticClass()) && bullet.Tag.Compare("Player", ESearchCase::IgnoreCase) != 0)
 				{
 					APlayerCharacter* player = Cast<APlayerCharacter>(actor);
 					player->OnHit();
+					UE_LOG(LogTemp, Warning, TEXT("Player Hit!"));
 					DestroyBullet(bullet.ID, i);
 					break;
 				}

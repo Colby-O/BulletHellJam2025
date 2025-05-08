@@ -6,6 +6,7 @@
 #include "BulletManager.generated.h"
 
 class AGridManager;
+class APlayerCharacter;
 
 UCLASS()
 class BULLETHELLJAM2025_API ABulletManager : public AActor
@@ -29,16 +30,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	UMaterialInterface* BaseMat;
 
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float CollisionDist = 100;
-
-	APlayerController* Player;
+	APlayerCharacter* Player;
 	AGridManager* GridManager;
 	UInstancedStaticMeshComponent* InstancedMesh;
+	UMaterialInstanceDynamic* DynamicMat;
 
-	void SpawnBullet(FVector Location, FRotator Rotation, FVector Scale, FVector Forward, float Speed, float LifeSpan, FString Tag = "");
+	void SpawnBullet(FVector Location, FRotator Rotation, FVector Scale, FVector Forward, float Speed, float LifeSpan, float CollisionDist, FLinearColor Color = FLinearColor::White, FString Tag = "");
 	void Update(float DeltaTime);
 	void ProcessCollisions();
 	void DestroyBullet(int InstanceID, int Index);
+	void SetBulletColor(FBullet Bullet, FLinearColor Color);
 };

@@ -168,7 +168,7 @@ void APlayerCharacter::CheckTile(FVector pos)
 
 void APlayerCharacter::OnHit()
 {
-	//UGameplayStatics::OpenLevel(this, FName(*GetWorld()->GetName()), false);
+	UGameplayStatics::OpenLevel(this, FName(*GetWorld()->GetName()), false);
 }
 
 void APlayerCharacter::DashForward()

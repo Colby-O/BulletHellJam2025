@@ -16,6 +16,15 @@ void UShooterComponent::BeginPlay()
 	BulletManager = Cast<ABulletManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ABulletManager::StaticClass()));
 
 	RawRotation = GetRelativeRotation();
+	
+	int i = 0;
+	for (FShootPattern p : ShootPatterns) p.ID = i++;
+
+	if (ShootPatterns.Num() > 0) 
+	{
+		SelectedPatternIndex = 0;
+		SelectedPattern = ShootPatterns[0];
+	}
 
 	Enable();
 }
@@ -42,32 +51,35 @@ void UShooterComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 	VelPrediction = (CurrentPosition - LastKnownPostion) / DeltaTime;
 	LastKnownPostion = CurrentPosition;
 
-	if (!IsEnabled) return;
+	if (!IsEnabled || ShootPatterns.Num() == 0) return;
 
-	RawRotation.Yaw += RotSpeed.X * DeltaTime;
-	RawRotation.Pitch += RotSpeed.Y * DeltaTime;
-	RawRotation.Roll += RotSpeed.Z * DeltaTime;
+	Timer += DeltaTime;
 
-	RawRotation.Yaw = ClampAngle(RawRotation.Yaw, RotMin.X, RotMax.X, YawLoop, LoopFrequency.X);
-	RawRotation.Pitch = ClampAngle(RawRotation.Pitch, RotMin.Y, RotMax.Y, PitchLoop, LoopFrequency.Y);
-	RawRotation.Roll = ClampAngle(RawRotation.Roll, RotMin.Z, RotMax.Z, RollLoop, LoopFrequency.Z);
+	if (Timer > SelectedPattern.Duration && ShootPatterns.Num() > 1) NextPattern();
+
+	RawRotation.Yaw += SelectedPattern.RotSpeed.X * DeltaTime;
+	RawRotation.Pitch += SelectedPattern.RotSpeed.Y * DeltaTime;
+	RawRotation.Roll += SelectedPattern.RotSpeed.Z * DeltaTime;
+
+	RawRotation.Yaw = ClampAngle(RawRotation.Yaw, SelectedPattern.RotMin.X, SelectedPattern.RotMax.X, SelectedPattern.YawLoop, SelectedPattern.LoopFrequency.X);
+	RawRotation.Pitch = ClampAngle(RawRotation.Pitch, SelectedPattern.RotMin.Y, SelectedPattern.RotMax.Y, SelectedPattern.PitchLoop, SelectedPattern.LoopFrequency.Y);
+	RawRotation.Roll = ClampAngle(RawRotation.Roll, SelectedPattern.RotMin.Z, SelectedPattern.RotMax.Z, SelectedPattern.RollLoop, SelectedPattern.LoopFrequency.Z);
 	SetRelativeRotation(RawRotation);
 }
 
 void UShooterComponent::Shoot(FVector Vel)
 {
 
-		for (const FVector& dir : SpawnDirections) 
+		for (const FVector& dir : SelectedPattern.SpawnDirections)
 		{
 			FVector spawnLoc = GetComponentLocation() + GetComponentRotation().RotateVector(dir.GetSafeNormal()) * Offset;
 			FVector forward = GetComponentRotation().RotateVector(dir.GetSafeNormal());
 			FRotator spawnRot = forward.Rotation();
 
-			float speed = Speed + FMath::Max(Vel.Dot(forward), 0);
+			float speed = SelectedPattern.Speed + FMath::Max(Vel.Dot(forward), 0);
 
-			BulletManager->SpawnBullet(spawnLoc, spawnRot, Scale, forward, speed, LifeSpan, FromTag);
+			BulletManager->SpawnBullet(spawnLoc, spawnRot, Scale, forward, speed, SelectedPattern.LifeSpan, CollisionDist, BulletColor, FromTag);
 		}
-
 }
 
 void UShooterComponent::SetFrom(FString Tag)
@@ -77,8 +89,19 @@ void UShooterComponent::SetFrom(FString Tag)
 
 FVector UShooterComponent::GetShootDirection(int index)
 {
-	if (index >= SpawnDirections.Num()) return FVector::ZeroVector;
-	return GetComponentRotation().RotateVector(SpawnDirections[index]).GetSafeNormal();
+	if (index >= SelectedPattern.SpawnDirections.Num()) return FVector::ZeroVector;
+	return GetComponentRotation().RotateVector(SelectedPattern.SpawnDirections[index]).GetSafeNormal();
+}
+
+void UShooterComponent::NextPattern()
+{
+	if (ShootPatterns.Num() == 0) return;
+
+	UE_LOG(LogTemp, Warning, TEXT("Swapped Pattern"));
+	Disable(true);
+	SelectedPatternIndex = (SelectedPatternIndex + 1) % ShootPatterns.Num();
+	SelectedPattern = ShootPatterns[SelectedPatternIndex];
+	Enable(true);
 }
 
 void UShooterComponent::ShootInternal()
@@ -86,18 +109,22 @@ void UShooterComponent::ShootInternal()
 	Shoot();
 }
 
-void UShooterComponent::Enable() 
+void UShooterComponent::Enable(bool Force) 
 {
-	if (IsEnabled) return;
+	if (IsEnabled && !Force) return;
 	IsEnabled = true;
+
+	Timer = 0;
 	GetOwner()->GetWorldTimerManager().ClearTimer(FireTimerHandler);
-	GetOwner()->GetWorldTimerManager().SetTimer(FireTimerHandler, this, &UShooterComponent::ShootInternal, FireRate, true);
+	GetOwner()->GetWorldTimerManager().SetTimer(FireTimerHandler, this, &UShooterComponent::ShootInternal, SelectedPattern.FireRate, true);
 }
 
-void UShooterComponent::Disable() 
+void UShooterComponent::Disable(bool Force)
 {
 	if (!IsEnabled) return;
 	IsEnabled = false;
+
+	Timer = 0;
 	GetOwner()->GetWorldTimerManager().ClearTimer(FireTimerHandler);
 }
 

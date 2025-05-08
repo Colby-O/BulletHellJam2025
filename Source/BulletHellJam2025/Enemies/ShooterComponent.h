@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
+#include "BulletHellJam2025/Enemies/ShootPattern.h"
 #include "ShooterComponent.generated.h"
 
 class ABulletManager;
@@ -31,56 +32,38 @@ public:
 	FString FromTag;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FVector Scale = FVector(0.2, 0.2, 0.2);
+	FLinearColor BulletColor = FLinearColor::White;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float Speed = 1000.0;
+	FVector Scale = FVector(0.2, 0.2, 0.2);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float Offset = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float FireRate = 1;
+	float CollisionDist = 100;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FVector RotSpeed;
+	UPROPERTY(EditAnywhere)
+	TArray<FShootPattern> ShootPatterns;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool YawLoop;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool PitchLoop;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool RollLoop;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FVector LoopFrequency;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FVector RotMin;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FVector RotMax;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float LifeSpan = 1.0;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FVector> SpawnDirections;
+	FShootPattern SelectedPattern;
+	int SelectedPatternIndex;
 
 	FVector VelPrediction;
 	FVector LastKnownPostion;
+	float Timer;
 
-	void Enable();
-	void Disable();
+	void Enable(bool Force = false);
+	void Disable(bool Force = false);
 	void Shoot(FVector Vel = FVector::ZeroVector);
 	void ShootInternal();
 	void SetFrom(FString Tag);
 	FVector GetShootDirection(int index);
+	void NextPattern();
 
 protected:
 	FRotator RawRotation;
 	FTimerHandle FireTimerHandler;
+	FTimerHandle PatternTimerHandler;
 	bool IsEnabled;
 };
