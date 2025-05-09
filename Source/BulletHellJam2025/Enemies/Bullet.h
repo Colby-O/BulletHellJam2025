@@ -11,7 +11,7 @@ struct BULLETHELLJAM2025_API FBullet
 	
 public:	
 	FBullet();
-	FBullet(int InstanceID, FVector F, float S, float L, float hitDist, float dmg, FString T = "");
+	FBullet(int InstanceID, FVector F, float S, float L, float hitDist, float dmg, FString T = "", float Radius = -1, FVector Center = FVector::ZeroVector);
 	~FBullet();
 
 	int ID;
@@ -22,4 +22,8 @@ public:
 	float Damage;
 	FVector Forward;
 	FString Tag;
+	bool MovesInCircle = false;
+	float MovementRadius;
+	FVector CircleCenter;
+	float CurrentAngle;
 };

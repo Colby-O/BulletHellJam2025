@@ -47,7 +47,43 @@ public:
 	FVector RotMax;
 
 	UPROPERTY(EditAnywhere)
+	bool MovesStationary = false;
+	UPROPERTY(EditAnywhere)
+	float MovesStationaryRadius = 1000;
+	UPROPERTY(EditAnywhere)
+	float MoveStationarySpacing = 10;
+
+	UPROPERTY(EditAnywhere)
 	float Distance = 1000;
+
+	UPROPERTY(EditAnywhere)
+	float TileFallDelay;
+
+	UPROPERTY(EditAnywhere)
+	bool IsRollOutGridPattern;
+
+	UPROPERTY(EditAnywhere)
+	int RollOutWidth;
+
+	UPROPERTY(EditAnywhere)
+	float RollOutRate;
+
+	UPROPERTY(EditAnywhere)
+	bool IsMeteoriteGridPattern;
+
+	UPROPERTY(EditAnywhere)
+	int MeteoriteSize;
+
+	UPROPERTY(EditAnywhere)
+	int MeteoriteGap;
+
+	UPROPERTY(EditAnywhere)
+	bool IsRadiusGridPattern;
+
+	UPROPERTY(EditAnywhere)
+	float RadiusRate;
+
+	bool HasRanGridPattern = false;
 
 	float LifeSpan;
 
@@ -55,4 +91,5 @@ public:
 	TArray<FVector> SpawnDirections;
 
 	void Awake();
+	bool IsGridPattern();
 };

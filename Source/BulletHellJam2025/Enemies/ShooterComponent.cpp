@@ -1,5 +1,7 @@
 #include "BulletHellJam2025/Enemies/ShooterComponent.h"
 #include "BulletHellJam2025/Enemies/BulletManager.h"
+#include "BulletHellJam2025/Grid/GridManager.h"
+#include "BulletHellJam2025/Player/PlayerCharacter.h"
 #include <Kismet/GameplayStatics.h>
 
 UShooterComponent::UShooterComponent()
@@ -13,6 +15,8 @@ void UShooterComponent::BeginPlay()
 	Super::BeginPlay();
 
 	BulletManager = Cast<ABulletManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ABulletManager::StaticClass()));
+	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
+	Player = Cast<APlayerCharacter>(UGameplayStatics::GetActorOfClass(GetWorld(), APlayerCharacter::StaticClass()));
 
 	RawRotation = GetRelativeRotation();
 	StartRotation = GetRelativeRotation();
@@ -22,6 +26,7 @@ void UShooterComponent::BeginPlay()
 	{
 		p.ID = i++;
 		p.Awake();
+		p.HasRanGridPattern = false;
 	}
 
 	if (ShootPatterns.Num() > 0) 
@@ -71,18 +76,39 @@ void UShooterComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 
 void UShooterComponent::Shoot(FVector Vel)
 {
+	UE_LOG(LogTemp, Warning, TEXT("Shoot Was Called!"));
 
-		for (const FVector& dir : SelectedPattern.SpawnDirections)
+	if (SelectedPattern.IsGridPattern() && !SelectedPattern.HasRanGridPattern) 
+	{
+		if (SelectedPattern.IsRollOutGridPattern) GridManager->RollOutAttack(GetComponentLocation(), SelectedPattern.SpawnDirections, SelectedPattern.RollOutWidth, SelectedPattern.RollOutRate, SelectedPattern.TileFallDelay);
+		else if (SelectedPattern.IsMeteoriteGridPattern) GridManager->MeteoriteAttack(SelectedPattern.MeteoriteSize, SelectedPattern.MeteoriteGap, SelectedPattern.TileFallDelay);
+		else GridManager->RadiusAttack(GetComponentLocation(), (Player->GetActorLocation() - GetComponentLocation()).GetSafeNormal(), SelectedPattern.RadiusRate, SelectedPattern.TileFallDelay);
+		SelectedPattern.HasRanGridPattern = true;
+		return;
+	}
+
+	for (const FVector& dir : SelectedPattern.SpawnDirections)
+	{
+		FVector spawnLoc = GetComponentLocation() + GetComponentRotation().RotateVector(dir.GetSafeNormal()) * Offset;
+		FVector forward = GetComponentRotation().RotateVector(dir.GetSafeNormal());
+		FRotator spawnRot = forward.Rotation();
+
+		float speed = SelectedPattern.Speed + FMath::Max(Vel.Dot(forward), 0);
+
+		UE_LOG(LogTemp, Warning, TEXT("Bullet Spawning With Life Span %f"), SelectedPattern.LifeSpan);
+
+		if (SelectedPattern.MovesStationary)
 		{
-			FVector spawnLoc = GetComponentLocation() + GetComponentRotation().RotateVector(dir.GetSafeNormal()) * Offset;
-			FVector forward = GetComponentRotation().RotateVector(dir.GetSafeNormal());
-			FRotator spawnRot = forward.Rotation();
-
-			float speed = SelectedPattern.Speed + FMath::Max(Vel.Dot(forward), 0);
-
-			UE_LOG(LogTemp, Warning, TEXT("Bullet Spawning With Life Span %f"), SelectedPattern.LifeSpan);
+			for (float radius = 0; radius < SelectedPattern.MovesStationaryRadius; radius += SelectedPattern.MoveStationarySpacing)
+			{
+				BulletManager->SpawnBullet(spawnLoc + forward * radius, spawnRot, Scale, forward, speed, FMath::Max(SelectedPattern.Duration, 0.0f), CollisionDist, Damage, BulletColor, FromTag, radius, GetComponentLocation());
+			}
+		}
+		else
+		{
 			BulletManager->SpawnBullet(spawnLoc, spawnRot, Scale, forward, speed, SelectedPattern.LifeSpan, CollisionDist, Damage, BulletColor, FromTag);
 		}
+	}
 }
 
 void UShooterComponent::SetFrom(FString Tag)
@@ -100,6 +126,7 @@ void UShooterComponent::NextPattern()
 {
 	if (ShootPatterns.Num() == 0) return;
 	Disable(true);
+	SelectedPattern.HasRanGridPattern = false;
 	SelectedPatternIndex = (SelectedPatternIndex + 1) % ShootPatterns.Num();
 	SelectedPattern = ShootPatterns[SelectedPatternIndex];
 	Enable(true);
@@ -109,6 +136,8 @@ void UShooterComponent::ResetShooter()
 {
 	Disable(true);
 	Timer = 0;
+	SelectedPattern.HasRanGridPattern = false;
+	GridManager->StopAttack();
 	if (ShootPatterns.Num() > 0) 
 	{
 		SelectedPatternIndex = 0;
@@ -129,7 +158,8 @@ void UShooterComponent::Enable(bool Force)
 
 	Timer = 0;
 	GetOwner()->GetWorldTimerManager().ClearTimer(FireTimerHandler);
-	GetOwner()->GetWorldTimerManager().SetTimer(FireTimerHandler, this, &UShooterComponent::ShootInternal, SelectedPattern.FireRate, true);
+	if (!SelectedPattern.MovesStationary && !SelectedPattern.IsGridPattern()) GetOwner()->GetWorldTimerManager().SetTimer(FireTimerHandler, this, &UShooterComponent::ShootInternal, SelectedPattern.FireRate, true);
+	else GetOwner()->GetWorldTimerManager().SetTimer(FireTimerHandler, this, &UShooterComponent::ShootInternal, 0.01f, false);
 }
 
 void UShooterComponent::Disable(bool Force)
@@ -142,4 +172,3 @@ void UShooterComponent::Disable(bool Force)
 	SetRelativeRotation(StartRotation);
 	RawRotation = StartRotation;
 }
-

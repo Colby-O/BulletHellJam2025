@@ -35,11 +35,13 @@ public:
 	UMaterialInstanceDynamic* DynamicMat;
 
 	bool IsMarkedForReset = false;
+	bool IsMarkedToRemoveBossBullets = false;
 
-	void SpawnBullet(FVector Location, FRotator Rotation, FVector Scale, FVector Forward, float Speed, float LifeSpan, float CollisionDist, float Damage, FLinearColor Color = FLinearColor::White, FString Tag = "");
+	void SpawnBullet(FVector Location, FRotator Rotation, FVector Scale, FVector Forward, float Speed, float LifeSpan, float CollisionDist, float Damage, FLinearColor Color = FLinearColor::White, FString Tag = "", float Radius = -1, FVector Center = FVector::ZeroVector);
 	void Update(float DeltaTime);
 	void ProcessCollisions();
 	void DestroyBullet(int InstanceID, int Index);
 	void SetBulletColor(FBullet Bullet, FLinearColor Color);
+	void DestroyBossBullets();
 	void ResetBullets();
 };

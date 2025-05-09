@@ -28,10 +28,6 @@ void ABulletManager::BeginPlay()
 	Player = Cast<APlayerCharacter>(UGameplayStatics::GetActorOfClass(GetWorld(), APlayerCharacter::StaticClass()));
 	Boss = Cast<ABoss>(UGameplayStatics::GetActorOfClass(GetWorld(), ABoss::StaticClass()));
 
-	//FVector currenLoc = GetActorLocation();
-	//currenLoc.Z = Player->GetActorLocation().Z;
-	//SetActorLocation(currenLoc);
-
 	if (BaseMat) 
 	{
 		InstancedMesh->NumCustomDataFloats = 3;
@@ -50,6 +46,7 @@ void ABulletManager::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	if (IsMarkedForReset) ResetBullets();
+	else if (IsMarkedToRemoveBossBullets) DestroyBossBullets();
 	ProcessCollisions();
 	Update(DeltaTime);
 }
@@ -59,6 +56,16 @@ void ABulletManager::SetBulletColor(FBullet Bullet, FLinearColor Color)
 	InstancedMesh->SetCustomDataValue(Bullet.ID, 0, Color.R, false);
 	InstancedMesh->SetCustomDataValue(Bullet.ID, 1, Color.G, false);
 	InstancedMesh->SetCustomDataValue(Bullet.ID, 2, Color.B, true);
+}
+
+void ABulletManager::DestroyBossBullets()
+{
+	for (int i = Bullets.Num() - 1; i >= 0; i--)
+	{
+		FBullet& bullet = Bullets[i];
+		if (bullet.Tag.Compare("Boss", ESearchCase::IgnoreCase) == 0) DestroyBullet(bullet.ID, i);
+	}
+	IsMarkedToRemoveBossBullets = false;
 }
 
 void ABulletManager::ResetBullets()
@@ -71,16 +78,17 @@ void ABulletManager::ResetBullets()
 	IsMarkedForReset = false;
 }
 
-void ABulletManager::SpawnBullet(FVector Location, FRotator Rotation, FVector Scale, FVector Forward, float Speed, float LifeSpan, float CollisionDist, float Damage, FLinearColor Color, FString Tag)
+void ABulletManager::SpawnBullet(FVector Location, FRotator Rotation, FVector Scale, FVector Forward, float Speed, float LifeSpan, float CollisionDist, float Damage, FLinearColor Color, FString Tag, float Radius, FVector Center)
 {
 	FTransform transform;
 	transform.SetLocation(Location);
 	transform.SetRotation(Rotation.Quaternion());
 	transform.SetScale3D(Scale);
 	int instanceID = InstancedMesh->AddInstance(transform);
-	FBullet bullet = FBullet(instanceID, Forward, Speed, LifeSpan, CollisionDist, Damage, Tag);
+	FBullet bullet = FBullet(instanceID, Forward, Speed, LifeSpan, CollisionDist, Damage, Tag, Radius, Center);
 	Bullets.Add(bullet);
 	SetBulletColor(bullet, Color);
+	
 	UE_LOG(LogTemp, Warning, TEXT("Spawning Bullet At: %s"), *transform.GetLocation().ToString());
 }
 
@@ -103,8 +111,26 @@ void ABulletManager::Update(float DeltaTime)
 		FTransform transform;
 		if (InstancedMesh->GetInstanceTransform(instanceID, transform, true))
 		{
-			transform.SetLocation(speed * DeltaTime * bullet.Forward + transform.GetLocation());
-			InstancedMesh->UpdateInstanceTransform(instanceID, transform, true, true);
+			if (bullet.MovesInCircle)
+			{
+				bullet.CurrentAngle += bullet.Speed * DeltaTime;
+				if (bullet.CurrentAngle >= 360.f)
+				{
+					bullet.CurrentAngle -= 360.f;
+				}
+				float rads = FMath::DegreesToRadians(bullet.CurrentAngle);
+				float x = bullet.CircleCenter.X + bullet.MovementRadius * FMath::Cos(rads);
+				float y = bullet.CircleCenter.Y + bullet.MovementRadius * FMath::Sin(rads);
+				float z = bullet.CircleCenter.Z;
+
+				transform.SetLocation(FVector(x, y, z));
+				InstancedMesh->UpdateInstanceTransform(instanceID, transform, true, true);
+			}
+			else
+			{
+				transform.SetLocation(speed * DeltaTime * bullet.Forward + transform.GetLocation());
+				InstancedMesh->UpdateInstanceTransform(instanceID, transform, true, true);
+			}
 		}
 
 		bullet.Life += DeltaTime;

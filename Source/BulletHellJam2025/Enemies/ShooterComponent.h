@@ -52,6 +52,9 @@ public:
 	FShootPattern SelectedPattern;
 	int SelectedPatternIndex;
 
+	class AGridManager* GridManager;
+	class APlayerCharacter* Player;
+
 	FRotator StartRotation;
 	FVector VelPrediction;
 	FVector LastKnownPostion;
