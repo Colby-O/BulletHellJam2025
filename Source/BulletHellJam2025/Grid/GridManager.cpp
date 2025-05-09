@@ -119,6 +119,32 @@ void AGridManager::ResetGrid()
 	}
 }
 
+FVector AGridManager::GetRandomLocation()
+{
+	TArray<ATile*> tileList;
+	Tiles.GenerateValueArray(tileList);
+
+	int maxAttempts = 1000;
+	int attempts = 0;
+	while (attempts++ < maxAttempts) 
+	{
+		int randomIndex = FMath::RandRange(0, tileList.Num() - 1);
+
+		if (tileList[randomIndex]->IsEnable) return tileList[randomIndex]->GetActorLocation();
+	}
+
+	return FVector();
+}
+
+void AGridManager::Spawn(TSubclassOf<AActor> Actor, int Number)
+{
+	for (int i = 0; i < Number; i++) 
+	{
+		FVector loc = GetRandomLocation();
+		GetWorld()->SpawnActor<AActor>(Actor, loc, FRotator::ZeroRotator);
+	}
+}
+
 float AGridManager::GetHeuristic(const FVector2Int& A, const FVector2Int& B)
 {
 	TArray<FVector2Int> directions = { FVector2Int(1, 0), FVector2Int(-1, 0) , FVector2Int(0, 1), FVector2Int(0, -1) };

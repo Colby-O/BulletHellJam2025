@@ -101,6 +101,8 @@ void APlayerCharacter::Tick(float DeltaTime)
 		}
 		if (EnableDebugMode) currentTile->SetColor(FLinearColor::Green);
 	}
+
+	ShooterComp->VelPrediction = GetVelocity();
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

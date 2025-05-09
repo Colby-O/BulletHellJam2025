@@ -41,6 +41,8 @@ void ABaseEnemy::BeginPlay()
 	ShooterComp->SetFrom("Enemy");
 	FActorSpawnParameters spawnParams;
 
+	IsMarkedForRemoval = false;
+
 	UE_LOG(LogTemp, Warning, TEXT("Attack Range: %f"), AttackRange);
 }
 
@@ -67,6 +69,29 @@ void ABaseEnemy::Tick(float DeltaTime)
 	HandleRotation();
 	HandleMovement(DeltaTime);
 	CheckForDeath();
+}
+
+void ABaseEnemy::DestroyAllEnemies()
+{
+	for (int i = ABaseEnemy::Enemies.Num() - 1; i >= 0; i--) 
+	{
+		ABaseEnemy* e = ABaseEnemy::Enemies[i];
+		e->IsMarkedForRemoval = true;
+	}
+}
+
+void ABaseEnemy::DestroyEnemy(ABaseEnemy* Enemy)
+{
+	for (int i = ABaseEnemy::Enemies.Num() - 1; i >= 0; i--)
+	{
+		ABaseEnemy* e = ABaseEnemy::Enemies[i];
+		if (e == Enemy) 
+		{
+			e->Destroy();
+			ABaseEnemy::Enemies.RemoveAt(i);
+			return;
+		}
+	}
 }
 
 FVector ABaseEnemy::GetDirectionToPlayer()
@@ -138,7 +163,6 @@ void ABaseEnemy::LocateTarget()
 		FString EnumName2 = EnumPtr->GetNameStringByValue((int64)CurrentState);
 		UE_LOG(LogTemp, Log, TEXT("Current State: %s"), *EnumName);
 		UE_LOG(LogTemp, Log, TEXT("Last State: %s"), *EnumName2);
-
 	}
 
 	if (CurrentState != EMovementState::Chasing) GetWorld()->GetTimerManager().ClearTimer(ChaseTimerHandle);
@@ -310,10 +334,12 @@ void ABaseEnemy::RelocatePlayer()
 
 void ABaseEnemy::CheckForDeath()
 {
+	if (IsMarkedForRemoval) DestroyEnemy(this);
+
 	ATile* curTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
 	if (!curTile || curTile->HasFallen)
 	{
-		Destroy();
+		DestroyEnemy(this);
 		if (ClosestEnemy)
 		{
 			ClosestEnemy->ClosestEnemy = ClosestEnemy->GetClosestEnemy();

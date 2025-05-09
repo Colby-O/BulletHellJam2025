@@ -67,6 +67,9 @@ public:
 	void GenerateGrid();
 	void ResetGrid();
 
+	FVector GetRandomLocation();
+	void Spawn(TSubclassOf<AActor> Actor, int Number = 1);
+
 	float GetHeuristic(const FVector2Int& A, const FVector2Int& B);
 	bool NearTileWithState(bool ATile::* State, FVector2Int Loc);
 	ATile* GetNearestSafeTile(FVector2Int Start, FVector2Int& SafeLocation, float MinDist = SMALL_NUMBER);

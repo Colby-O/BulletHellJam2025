@@ -33,6 +33,9 @@ public:
 
 	static TArray<ABaseEnemy*> Enemies;
 
+	void static DestroyAllEnemies();
+	void static DestroyEnemy(ABaseEnemy* Enemy);
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	bool DebugMovement = true;
 
@@ -66,6 +69,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float KnockbackAmount = 100.0;
 
+	bool IsMarkedForRemoval = false;
 	bool IsAttacking = false;
 	bool IsKnockingBack = false;
 	bool HoldPosition = true;

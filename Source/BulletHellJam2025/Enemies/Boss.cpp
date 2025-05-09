@@ -1,12 +1,13 @@
 #include "BulletHellJam2025/Enemies/Boss.h"
+#include "BulletHellJam2025/Enemies/BaseEnemy.h"
 #include "BulletHellJam2025/Enemies/ShooterComponent.h"
+#include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/UI/UIManager.h"
 #include <Kismet/GameplayStatics.h>
 
 ABoss::ABoss()
 {
 	PrimaryActorTick.bCanEverTick = true;
-
 }
 
 void ABoss::BeginPlay()
@@ -14,19 +15,159 @@ void ABoss::BeginPlay()
 	Super::BeginPlay();
 	
 	UIManager = Cast<AUIManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AUIManager::StaticClass()));
+	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 	HasSetupHealth = false;
+	CurrentHealth = 0;
+	CurrentStage = EBossStage::None;
+	ShooterComp->Disable();
 }
 
 void ABoss::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (!HasSetupHealth) 
+	if (!HasSetupHealth)
 	{
 		HasSetupHealth = true;
 		GameView = UIManager->GetView<UGameViewWidget>();
 		GameView->MaxBossHealth = MaxHealth;
-		SetHealth(MaxHealth);
+		SetHealth(0);
+		NextStage();
+	}
+
+	StageUpdate(CurrentStage);
+}
+
+void ABoss::NextStage()
+{
+	OnStageChange(++CurrentStage);
+}
+
+void ABoss::OnStageChange(EBossStage Stage)
+{
+	UEnum* EnumPtr = StaticEnum<EBossStage>();
+	if (EnumPtr) {
+		UE_LOG(LogTemp, Log, TEXT("Boss Stage Changed to: %s"), *EnumPtr->GetNameStringByValue((int64)Stage));
+	}
+
+	switch (Stage)
+	{
+	case Start:
+		BeginStartStage();
+		break;
+	case Stage1:
+		ShooterComp->Enable();
+		break;
+	case Stage2:
+		break;
+	case Stage3:
+		break;
+	case End:
+		break;
+	default:
+		break;
+	}
+}
+
+void ABoss::StageUpdate(EBossStage Stage)
+{
+	switch (Stage)
+	{
+	case Start:
+		StartUpdate();
+		break;
+	case Stage1:
+		break;
+	case Stage2:
+		break;
+	case Stage3:
+		break;
+	case End:
+		break;
+	default:
+		break;
+	}
+}
+
+void ABoss::StageReset(EBossStage Stage)
+{
+	switch (Stage)
+	{
+	case Start:
+		StartStageReset();
+		break;
+	case Stage1:
+		break;
+	case Stage2:
+		break;
+	case Stage3:
+		break;
+	case End:
+		break;
+	default:
+		break;
+	}
+}
+
+void ABoss::BeginStartStage()
+{
+	if (!IsHealthFilling && CurrentHealth < MaxHealth * InitalHealthFillPercentage)
+	{
+		StartHealthFill(MaxHealth * InitalHealthFillPercentage, InitalHealthFillDuration);
+	}
+
+	GridManager->Spawn(EnemyPrefab, StartStageNumberOfEnemies);
+}
+
+void ABoss::StartUpdate()
+{
+	if (!IsHealthFilling && CurrentHealth < MaxHealth) {
+		StartHealthFill(MaxHealth, StartStageHealthFillDuration);
+	}
+
+	if (ABaseEnemy::Enemies.Num() == 0) 
+	{
+		StopHealthFill();
+		NextStage();
+	}
+}
+
+void ABoss::StartStageReset()
+{
+	ShooterComp->Disable();
+	ABaseEnemy::DestroyAllEnemies();
+	BeginStartStage();
+	//SetHealth(0);
+	//StopHealthFill();
+	//BeginStartStage();
+}
+
+void ABoss::StartHealthFill(float To, float Duration)
+{
+	StopHealthFill();
+	IsHealthFilling = true;
+	CurrentFillTarget = FMath::Clamp(To, 0, MaxHealth);
+	CurrentHealthFillDuration = Duration;
+	if (CurrentHealth >= CurrentFillTarget) return;
+	GetWorld()->GetTimerManager().SetTimer(HealthFillTimerHandle, this, &ABoss::HealthFillStep, CurrentHealthFillDuration / (CurrentFillTarget - CurrentHealth), true);
+}
+
+void ABoss::StopHealthFill()
+{
+	IsHealthFilling = false;
+	GetWorld()->GetTimerManager().ClearTimer(HealthFillTimerHandle);
+}
+
+void ABoss::HealthFillStep()
+{
+	if (CurrentFillTarget >= CurrentHealth) 
+	{
+		TakeHealth(-1);
+	}
+	else 
+	{
+		SetHealth(CurrentFillTarget);
+		StopHealthFill();
 	}
 }
 
@@ -45,5 +186,6 @@ void ABoss::TakeHealth(float Amount)
 void ABoss::ResetBoss()
 {
 	ShooterComp->ResetShooter();
+	StageReset(CurrentStage);
 }
 
