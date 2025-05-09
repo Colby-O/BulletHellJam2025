@@ -30,6 +30,7 @@ public:
 	class AGameManager* GameManager;
 	class AGridManager* GridManager;
 	class APlayerCharacter* Player;
+	class ABoss* Boss;
 	UInstancedStaticMeshComponent* InstancedMesh;
 	UMaterialInstanceDynamic* DynamicMat;
 

@@ -42,13 +42,13 @@ void ATile::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void ATile::TriggerFall()
+void ATile::TriggerFall(float FallDelayOverride)
 {
-	if (IsFalling || !IsEnable) return;
+	if (IsFalling || IsDisabled) return;
 	IsFalling = true;
 	HasFallen = false;
 	SetColor(FLinearColor::Red);
-	GetWorld()->GetTimerManager().SetTimer(TimerHandler, this, &ATile::StartFall, FallDelay, true);
+	GetWorld()->GetTimerManager().SetTimer(TimerHandler, this, &ATile::StartFall, (FallDelayOverride < 0) ? FallDelay : FallDelayOverride, true);
 }
 
 void ATile::StartFall()
@@ -104,7 +104,7 @@ void ATile::ForceStopFall()
 
 void ATile::SetColor(FLinearColor Color)
 {
-	if (!IsEnable) return;
+	if (IsDisabled) return;
 
 	UMaterialInstanceDynamic* DynMaterial = UMaterialInstanceDynamic::Create(Mat, this);
 

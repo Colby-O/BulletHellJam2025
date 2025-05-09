@@ -3,6 +3,7 @@
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/Enemies/BulletManager.h"
 #include "BulletHellJam2025/Enemies/Boss.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include <Kismet/GameplayStatics.h>
 
 AGameManager::AGameManager()
@@ -14,6 +15,8 @@ AGameManager::AGameManager()
 void AGameManager::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (PlayerDashInstancedMesh) PlayerDashInstancedMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 	BulletManager = Cast<ABulletManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ABulletManager::StaticClass()));

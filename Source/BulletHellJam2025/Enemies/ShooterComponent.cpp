@@ -53,10 +53,6 @@ void UShooterComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	//FVector CurrentPosition = GetOwner()->GetActorLocation();
-	//VelPrediction = (CurrentPosition - LastKnownPostion) / DeltaTime;
-	//LastKnownPostion = CurrentPosition;
-
 	if (!IsEnabled || ShootPatterns.Num() == 0) return;
 
 	Timer += DeltaTime;

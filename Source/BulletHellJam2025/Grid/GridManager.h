@@ -70,6 +70,28 @@ public:
 	FVector GetRandomLocation();
 	void Spawn(TSubclassOf<AActor> Actor, int Number = 1);
 
+
+	FTimerHandle AttackTimeHandle;
+	bool IsRunningAttack = false;
+	float CurrentAttackFallDelay;
+
+	TArray<FVector2Int> CurrentRollOutPosition;
+	TArray<FVector> CurrentRolloutDirections;
+	TArray<bool> AtEndOfRollOut;
+	int CurrentRollOutWidth;
+	void RollOutAttack(FVector Origin, TArray<FVector> Directions, int Width, float Rate, float Delay = -1);
+	void RollOutStep();
+
+	void MeteoriteAttack(int Size, int Gap, float Delay = -1);
+
+	float CurrentRadiusAttackAngle;
+	FVector CurrentRadiusAttackDirection;
+	FVector CurrentRadiusAttackOrigin;
+	void RadiusAttack(FVector Origin, FVector StartDirection, float Rate, float Delay = -1);
+	void RadiusAttackStep();
+
+	void StopAttack();
+
 	float GetHeuristic(const FVector2Int& A, const FVector2Int& B);
 	bool NearTileWithState(bool ATile::* State, FVector2Int Loc);
 	ATile* GetNearestSafeTile(FVector2Int Start, FVector2Int& SafeLocation, float MinDist = SMALL_NUMBER);

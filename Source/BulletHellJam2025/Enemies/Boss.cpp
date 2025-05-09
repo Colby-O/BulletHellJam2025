@@ -50,12 +50,15 @@ void ABoss::OnStageChange(EBossStage Stage)
 		UE_LOG(LogTemp, Log, TEXT("Boss Stage Changed to: %s"), *EnumPtr->GetNameStringByValue((int64)Stage));
 	}
 
+	HealthAtStartOfStage = CurrentHealth;
+
 	switch (Stage)
 	{
 	case Start:
 		BeginStartStage();
 		break;
 	case Stage1:
+		CanTakeDamage = true;
 		ShooterComp->Enable();
 		break;
 	case Stage2:
@@ -97,6 +100,7 @@ void ABoss::StageReset(EBossStage Stage)
 		StartStageReset();
 		break;
 	case Stage1:
+		SetHealth(HealthAtStartOfStage);
 		break;
 	case Stage2:
 		break;
@@ -115,6 +119,8 @@ void ABoss::BeginStartStage()
 	{
 		StartHealthFill(MaxHealth * InitalHealthFillPercentage, InitalHealthFillDuration);
 	}
+
+	CanTakeDamage = false;
 
 	GridManager->Spawn(EnemyPrefab, StartStageNumberOfEnemies);
 }
@@ -180,6 +186,7 @@ void ABoss::SetHealth(float Health)
 
 void ABoss::TakeHealth(float Amount)
 {
+	if (!CanTakeDamage && Amount >= 0) return;
 	SetHealth(CurrentHealth - Amount);
 }
 

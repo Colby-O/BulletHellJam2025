@@ -42,6 +42,9 @@ protected:
 	bool EnableDebugMode = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	bool EnableGodMode = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	bool EnableCornerFall = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
@@ -65,6 +68,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float DashCooldown = 0.25;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	int DashCopies = 10;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float MaxHealth;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
@@ -78,6 +84,7 @@ protected:
 
 	class UTapHandler* TapHandler;
 	FTimerHandle DashTimeHandle;
+	FTimerHandle DashCopyTimeHandle;
 	APlayerController* Controller;
 	FTransform StartTransform;
 	float PlayerWidth;
@@ -98,6 +105,7 @@ protected:
 	void DashLeft();
 	void DashRight();
 	void DashMoveDirection();
+	void AddDashCopy();
 	void Shoot();
 	void StartShoot();
 	void StopShoot();

@@ -23,7 +23,7 @@ public:
 	class AGridManager* GridManager;
 
 	UFUNCTION(BlueprintCallable)
-	void TriggerFall();
+	void TriggerFall(float FallDelayOverride = -1);
 
 	UFUNCTION(BlueprintCallable)
 	void ResetTile();
@@ -37,7 +37,7 @@ public:
 	UMaterialInterface* Mat;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite);
-	bool IsEnable = true;
+	bool IsDisabled = false;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	bool IsFalling = false;

@@ -1,5 +1,6 @@
 #include "BulletHellJam2025/Enemies/BulletManager.h"
 #include "BulletHellJam2025/Enemies/Bullet.h"
+#include "BulletHellJam2025/Enemies/Boss.h"
 #include "BulletHellJam2025/GameManager.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include <Kismet/GameplayStatics.h>
@@ -25,6 +26,7 @@ void ABulletManager::BeginPlay()
 	GameManager = Cast<AGameManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGameManager::StaticClass()));
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 	Player = Cast<APlayerCharacter>(UGameplayStatics::GetActorOfClass(GetWorld(), APlayerCharacter::StaticClass()));
+	Boss = Cast<ABoss>(UGameplayStatics::GetActorOfClass(GetWorld(), ABoss::StaticClass()));
 
 	//FVector currenLoc = GetActorLocation();
 	//currenLoc.Z = Player->GetActorLocation().Z;
@@ -126,13 +128,10 @@ void ABulletManager::ProcessCollisions()
 			DestroyBullet(bullet.ID, i);
 			continue;
 		}
-		else if (!bulletTile->IsEnable) 
-		{
-			continue;
-		}
 
 		TArray<AActor*> actors;
 		actors.Add(Player);
+		actors.Add(Boss);
 		for (ABaseEnemy* e : ABaseEnemy::Enemies) actors.Add(e);
 		
 		bulletLoc.Z = 0;
@@ -140,7 +139,19 @@ void ABulletManager::ProcessCollisions()
 		{
 			FVector actorLoc = actor->GetActorLocation();
 			actorLoc.Z = 0;
-			if (FVector::Dist(actorLoc, bulletLoc) < bullet.CollisionDist)
+			if (actor->IsA(ABoss::StaticClass()) && bullet.Tag.Compare("Player", ESearchCase::IgnoreCase) == 0)
+			{
+				ABoss* boss = Cast<ABoss>(actor);
+				UE_LOG(LogTemp, Warning, TEXT("Boss Hit!"));
+				if (boss->CanTakeDamage && FVector::Dist(actorLoc, bulletLoc) < boss->CollisonDist) 
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Boss Damaged!"));
+					boss->TakeHealth(bullet.Damage);
+					DestroyBullet(bullet.ID, i);
+					break;
+				}
+			}
+			else if (FVector::Dist(actorLoc, bulletLoc) < bullet.CollisionDist)
 			{
 				UE_LOG(LogTemp, Warning, TEXT("Bullet Hit: %s"), *actor->GetName());
 				if (actor->IsA(APlayerCharacter::StaticClass()) && bullet.Tag.Compare("Player", ESearchCase::IgnoreCase) != 0)

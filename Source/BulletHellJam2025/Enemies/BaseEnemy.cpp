@@ -308,15 +308,18 @@ void ABaseEnemy::KnockbackStep()
 	float smoothedAlpha = FMath::InterpEaseOut(0.f, 1.f, alpha, 2.0f);
 	FVector newLocation = FMath::Lerp(KnockbackStart, KnockbackEnd, smoothedAlpha);
 
-	ATile* nextTile = GridManager->GetTileAt(GridManager->WorldToGrid(newLocation));
+	FVector2Int nextLoc = GridManager->WorldToGrid(newLocation);
+	ATile* nextTile = GridManager->GetTileAt(nextLoc);
 
-	if (!nextTile || (nextTile && nextTile->IsEnable)) 
+	bool nearDisabledTile = GridManager->NearTileWithState(&ATile::IsDisabled, nextLoc);
+
+	if (!nextTile || (nextTile && !nearDisabledTile))
 	{
 		SetActorLocation(newLocation, true);
 		CheckForDeath();
 	}
 	
-	if (alpha >= 1.0f || (nextTile && !nextTile->IsEnable))
+	if (alpha >= 1.0f || (nextTile && nearDisabledTile))
 	{
 		IsKnockingBack = false;
 		GetWorld()->GetTimerManager().ClearTimer(KnockbackTimerHandle);

@@ -18,6 +18,9 @@ protected:
 public:	
 	virtual void Tick(float DeltaTime) override;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
+	UInstancedStaticMeshComponent* PlayerDashInstancedMesh;
+
 	class AGridManager* GridManager;
 	class ABulletManager* BulletManager;
 	class APlayerCharacter* Player;

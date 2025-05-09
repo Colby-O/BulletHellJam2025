@@ -66,6 +66,12 @@ public:
 	float MaxHealth = 1000;
 	float CurrentHealth;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collsions")
+	float CollisonDist = 500;
+	float HealthAtStartOfStage;
+	bool CanTakeDamage = true;
+
+
 	bool IsHealthFilling = false;
 	float CurrentHealthFillDuration;
 	float CurrentFillTarget;

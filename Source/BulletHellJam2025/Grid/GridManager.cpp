@@ -130,7 +130,7 @@ FVector AGridManager::GetRandomLocation()
 	{
 		int randomIndex = FMath::RandRange(0, tileList.Num() - 1);
 
-		if (tileList[randomIndex]->IsEnable) return tileList[randomIndex]->GetActorLocation();
+		if (!tileList[randomIndex]->IsDisabled) return tileList[randomIndex]->GetActorLocation();
 	}
 
 	return FVector();
@@ -143,6 +143,157 @@ void AGridManager::Spawn(TSubclassOf<AActor> Actor, int Number)
 		FVector loc = GetRandomLocation();
 		GetWorld()->SpawnActor<AActor>(Actor, loc, FRotator::ZeroRotator);
 	}
+}
+
+void AGridManager::RollOutAttack(FVector Origin, TArray<FVector> Directions, int Width, float Rate, float Delay)
+{
+	if (IsRunningAttack) return;
+	UE_LOG(LogTemp, Warning, TEXT("Starting Rollout Attack"));
+	IsRunningAttack = true;
+	CurrentRolloutDirections = Directions;
+	CurrentRollOutWidth = Width;
+	CurrentAttackFallDelay = Delay;
+
+	for (const FVector& _ : Directions) 
+	{
+		FVector2Int startLoc = WorldToGrid(Origin);
+		CurrentRollOutPosition.Add(startLoc);
+		AtEndOfRollOut.Add(false);
+		GetTileAt(startLoc)->TriggerFall(CurrentAttackFallDelay);
+	}
+
+	GetWorld()->GetTimerManager().SetTimer(AttackTimeHandle, this, &AGridManager::RollOutStep, Rate, true);
+}
+
+void AGridManager::RollOutStep()
+{
+	for (int i = 0; i < CurrentRollOutPosition.Num(); i++)
+	{
+		if (AtEndOfRollOut[i]) continue;
+
+		FVector curLoc = GridToWorld(CurrentRollOutPosition[i]);
+
+		FVector forward = CurrentRolloutDirections[i];
+		FVector right = FVector::CrossProduct(forward, FVector::UpVector);
+
+		FVector nextLoc = curLoc + TileSize * forward;
+
+		UE_LOG(LogTemp, Warning, TEXT("Next Roll Out Loc is: %s"), *nextLoc.ToString());
+
+		for (int j = -CurrentRollOutWidth; j <= CurrentRollOutWidth; j++)
+		{
+			FVector2Int nextGridLoc = WorldToGrid(nextLoc + (TileSize * 0.5f) * j * right);
+			UE_LOG(LogTemp, Warning, TEXT("Next Roll Out Step Grid Loc is: %s"), *nextGridLoc.ToString());
+			ATile* tile = GetTileAt(nextGridLoc);
+			
+			if (!tile && j == 0)
+			{
+				AtEndOfRollOut[i] = true;
+				continue;
+			}
+			else if (j == 0) 
+			{
+				CurrentRollOutPosition[i] = nextGridLoc;
+			}
+
+			if (tile)
+			{
+				tile->TriggerFall(CurrentAttackFallDelay);
+			}
+		}
+	}
+
+	bool endAttack = true;
+	for (bool state : AtEndOfRollOut) endAttack &= state;
+	UE_LOG(LogTemp, Warning, TEXT("Is At End Of Attack: %d"), endAttack);
+	if (endAttack) 
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Stopping Attack"))
+		StopAttack();
+	}
+}
+
+void AGridManager::MeteoriteAttack(int Size, int Gap, float Delay)
+{
+	if (IsRunningAttack) return;
+	UE_LOG(LogTemp, Warning, TEXT("Starting Meteorite Attack"));
+	IsRunningAttack = true;
+	CurrentAttackFallDelay = Delay;
+
+	int mapTileRadius = MapRadius / TileSize;
+	for (int i = -mapTileRadius; i <= mapTileRadius; i = i + Size + Gap) 
+	{
+		for (int j = -mapTileRadius; j <= mapTileRadius; j = j + Size + Gap)
+		{
+			for (int k = i; k <= i + Size; k++)
+			{
+				for (int t = j; t <= j + Size; t++)
+				{
+					if (ATile* tile = GetTileAt(FVector2Int(k, t)))
+					{
+						tile->TriggerFall(CurrentAttackFallDelay);
+					}
+				}
+			}
+		}
+	}
+
+	StopAttack();
+}
+
+void AGridManager::RadiusAttack(FVector Origin, FVector StartDirection, float Rate, float Delay)
+{
+	if (IsRunningAttack) return;
+	UE_LOG(LogTemp, Warning, TEXT("Starting Radius Attack"));
+	IsRunningAttack = true;
+
+	CurrentAttackFallDelay = Delay;
+	CurrentRadiusAttackDirection = StartDirection;
+	CurrentRadiusAttackOrigin = Origin;
+	CurrentRadiusAttackAngle = 0.0f;
+
+	GetWorld()->GetTimerManager().SetTimer(AttackTimeHandle, this, &AGridManager::RadiusAttackStep, Rate / 360.0f, true);
+}
+
+void AGridManager::RadiusAttackStep()
+{
+	FVector2Int curLoc = WorldToGrid(CurrentRadiusAttackOrigin);
+	ATile* nextTile = GetTileAt(curLoc);
+
+	FQuat RotationQuat = FQuat(FVector::UpVector, FMath::DegreesToRadians(CurrentRadiusAttackAngle));
+	FVector direction = RotationQuat.RotateVector(CurrentRadiusAttackDirection);
+	UE_LOG(LogTemp, Warning, TEXT("Current Direction Is: %s"), *direction.ToString());
+	FVector nextLoc = GridToWorld(curLoc);
+	
+	int visited = 0;
+	while (nextTile && visited < MapRadius / TileSize)
+	{
+		FVector2Int nextGridLoc = WorldToGrid(nextLoc);
+	
+		if (ATile* tile = GetTileAt(nextGridLoc))
+		{
+			tile->TriggerFall(CurrentAttackFallDelay);
+		}
+
+		nextLoc = nextLoc + TileSize * direction;
+		nextTile = GetTileAt(WorldToGrid(nextLoc));
+		visited++;
+	}
+
+	CurrentRadiusAttackAngle += 1;
+	UE_LOG(LogTemp, Warning, TEXT("Current Angle is: %f"), CurrentRadiusAttackAngle);
+	if (CurrentRadiusAttackAngle >= 360.0) StopAttack();
+}
+
+void AGridManager::StopAttack()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Stopped Attack"));
+	GetWorld()->GetTimerManager().ClearTimer(AttackTimeHandle);
+
+	CurrentRollOutPosition.Empty();
+	AtEndOfRollOut.Empty();
+	CurrentAttackFallDelay = -1;
+	IsRunningAttack = false;
 }
 
 float AGridManager::GetHeuristic(const FVector2Int& A, const FVector2Int& B)
@@ -186,7 +337,7 @@ ATile* AGridManager::GetNearestSafeTile(FVector2Int Start, FVector2Int& SafeLoca
 		}
 
 		ATile* curTile = GetTileAt(SafeLocation);
-		if (curTile && curTile->IsEnable && !NearTileWithState(&ATile::IsFalling, SafeLocation) && SafeLocation.Dist(Start) >= MinDist) return curTile;
+		if (curTile && !curTile->IsDisabled && !NearTileWithState(&ATile::IsFalling, SafeLocation) && SafeLocation.Dist(Start) >= MinDist) return curTile;
 	}
 
 	SafeLocation = FVector2Int(0, 0);
@@ -240,7 +391,7 @@ TArray<ATile*> AGridManager::FindPath(const FVector2Int& Start, const FVector2In
 		for (const FVector2Int& dir : directions) 
 		{
 			FVector2Int neighbor = cur->Point + dir;
-			if (!Tiles.Contains(neighbor) || closed.Contains(neighbor) || !GetTileAt(neighbor)->IsEnable || NearTileWithState(&ATile::HasFallen, neighbor) || TilesToAvoid.Contains(neighbor)) continue;
+			if (!Tiles.Contains(neighbor) || closed.Contains(neighbor) || NearTileWithState(&ATile::IsDisabled, neighbor) || NearTileWithState(&ATile::HasFallen, neighbor) || TilesToAvoid.Contains(neighbor)) continue;
 
 			float dst = cur->Dst + 1;
 			FNode** existing = open.Find(neighbor);

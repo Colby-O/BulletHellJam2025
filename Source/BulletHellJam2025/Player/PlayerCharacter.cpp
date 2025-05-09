@@ -1,6 +1,7 @@
 #include "BulletHellJam2025/Player/PlayerCharacter.h"
 #include "BulletHellJam2025/Core/TapHandler.h"
 #include "BulletHellJam2025/Grid/GridManager.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "BulletHellJam2025/GameManager.h"
 #include "BulletHellJam2025/Grid/Tile.h"
 #include "BulletHellJam2025/Core/Vector2Int.h"
@@ -205,6 +206,7 @@ void APlayerCharacter::CheckTile(FVector pos)
 
 void APlayerCharacter::OnHit(const FBullet& Bullet)
 {
+	if (EnableGodMode) return;
 	TakeHealth(Bullet.Damage);
 }
 
@@ -231,6 +233,16 @@ void APlayerCharacter::DashRight()
 void APlayerCharacter::DashMoveDirection()
 {
 	Dash(GetLastMovementInputVector());
+}
+
+void APlayerCharacter::AddDashCopy()
+{
+	if (!GameManager || !GameManager->PlayerDashInstancedMesh) return;
+	//FTransform transform;
+	//transform.SetLocation(PlayerMesh->GetRelativeLocation());
+	//transform.SetRotation(PlayerMesh->GetRelativeRotation().Quaternion());
+	//transform.SetScale3D(PlayerMesh->GetRelativeScale3D());
+	GameManager->PlayerDashInstancedMesh->AddInstance(PlayerMesh->GetComponentTransform());
 }
 
 void APlayerCharacter::Shoot()
@@ -269,12 +281,15 @@ void APlayerCharacter::Dash(FVector Direction)
 		FVector normal = Direction.GetSafeNormal();
 		LaunchCharacter(FVector(normal.X, normal.Y, 0) * DashForce, true, true);
 		GetWorldTimerManager().SetTimer(DashTimeHandle, this, &APlayerCharacter::StopDashing, DashCooldown, false);
+		GetWorldTimerManager().SetTimer(DashCopyTimeHandle, this, &APlayerCharacter::AddDashCopy, DashCooldown / DashCopies, true);
 	}
 }
 
 void APlayerCharacter::StopDashing()
 {
 	IsDashing = false;
+	GetWorldTimerManager().ClearTimer(DashCopyTimeHandle);
+	GameManager->PlayerDashInstancedMesh->ClearInstances();
 }
 
 void APlayerCharacter::MoveForward(float Input)
