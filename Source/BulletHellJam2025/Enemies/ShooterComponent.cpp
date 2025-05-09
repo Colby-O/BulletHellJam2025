@@ -1,6 +1,5 @@
 #include "BulletHellJam2025/Enemies/ShooterComponent.h"
 #include "BulletHellJam2025/Enemies/BulletManager.h"
-#include "BulletHellJam2025/Enemies/BulletManager.h"
 #include <Kismet/GameplayStatics.h>
 
 UShooterComponent::UShooterComponent()
@@ -16,7 +15,8 @@ void UShooterComponent::BeginPlay()
 	BulletManager = Cast<ABulletManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ABulletManager::StaticClass()));
 
 	RawRotation = GetRelativeRotation();
-	
+	StartRotation = GetRelativeRotation();
+
 	int i = 0;
 	for (FShootPattern& p : ShootPatterns) 
 	{
@@ -83,7 +83,7 @@ void UShooterComponent::Shoot(FVector Vel)
 			float speed = SelectedPattern.Speed + FMath::Max(Vel.Dot(forward), 0);
 
 			UE_LOG(LogTemp, Warning, TEXT("Bullet Spawning With Life Span %f"), SelectedPattern.LifeSpan);
-			BulletManager->SpawnBullet(spawnLoc, spawnRot, Scale, forward, speed, SelectedPattern.LifeSpan, CollisionDist, BulletColor, FromTag);
+			BulletManager->SpawnBullet(spawnLoc, spawnRot, Scale, forward, speed, SelectedPattern.LifeSpan, CollisionDist, Damage, BulletColor, FromTag);
 		}
 }
 
@@ -101,8 +101,6 @@ FVector UShooterComponent::GetShootDirection(int index)
 void UShooterComponent::NextPattern()
 {
 	if (ShootPatterns.Num() == 0) return;
-
-	UE_LOG(LogTemp, Warning, TEXT("Swapped Pattern"));
 	Disable(true);
 	SelectedPatternIndex = (SelectedPatternIndex + 1) % ShootPatterns.Num();
 	SelectedPattern = ShootPatterns[SelectedPatternIndex];
@@ -143,5 +141,7 @@ void UShooterComponent::Disable(bool Force)
 
 	Timer = 0;
 	GetOwner()->GetWorldTimerManager().ClearTimer(FireTimerHandler);
+	SetRelativeRotation(StartRotation);
+	RawRotation = StartRotation;
 }
 

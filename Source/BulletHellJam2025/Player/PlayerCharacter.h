@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "BulletHellJam2025/UI/GameViewWidget.h"
+#include "BulletHellJam2025/Enemies/Bullet.h"
 #include "PlayerCharacter.generated.h"
 
 UCLASS()
@@ -29,12 +31,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	UStaticMeshComponent* GunMesh;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "References")
-	class AGameManager* GameManager;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "References")
-	class AGridManager* GridManager;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	class UShooterComponent* ShooterComp;
@@ -69,6 +65,17 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float DashCooldown = 0.25;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float MaxHealth;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float CurrentHealth;
+
+	class AGameManager* GameManager;
+	class AGridManager* GridManager;
+	class AUIManager* UIManager;
+
+	UGameViewWidget* GameView;
+
 	class UTapHandler* TapHandler;
 	FTimerHandle DashTimeHandle;
 	APlayerController* Controller;
@@ -77,6 +84,9 @@ protected:
 	float PlayerHeight;
 	bool IsDashing;
 	bool HasMoved;
+	bool HasSetupHealth = false;
+	bool IsFiring = false;
+	float FiringRate = 0.1;
 
 	void MoveForward(float Input);
 	void MoveRight(float Input);
@@ -89,13 +99,17 @@ protected:
 	void DashRight();
 	void DashMoveDirection();
 	void Shoot();
+	void StartShoot();
+	void StopShoot();
 	void CheckTile(FVector pos);
 	void UpdatePlayerRotation();
 	void LimitSpeed();
 	void SetCursor();
 	void OnDeath();
+	void SetHealth(float Health);
 
 public:
-	void OnHit();
+	void OnHit(const FBullet& Bullet);
+	void TakeHealth(float Amount);
 	void ResetPlayer();
 };

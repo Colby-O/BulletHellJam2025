@@ -35,7 +35,7 @@ public:
 
 	bool IsMarkedForReset = false;
 
-	void SpawnBullet(FVector Location, FRotator Rotation, FVector Scale, FVector Forward, float Speed, float LifeSpan, float CollisionDist, FLinearColor Color = FLinearColor::White, FString Tag = "");
+	void SpawnBullet(FVector Location, FRotator Rotation, FVector Scale, FVector Forward, float Speed, float LifeSpan, float CollisionDist, float Damage, FLinearColor Color = FLinearColor::White, FString Tag = "");
 	void Update(float DeltaTime);
 	void ProcessCollisions();
 	void DestroyBullet(int InstanceID, int Index);

@@ -6,6 +6,7 @@
 #include "BulletHellJam2025/Core/Vector2Int.h"
 #include "BulletHellJam2025/Enemies/ShooterComponent.h"
 #include "Camera/CameraComponent.h"
+#include "BulletHellJam2025/UI/UIManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -50,6 +51,7 @@ void APlayerCharacter::BeginPlay()
 
 	GameManager = Cast<AGameManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGameManager::StaticClass()));
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
+	UIManager = Cast<AUIManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AUIManager::StaticClass()));
 
 	GetCharacterMovement()->MaxWalkSpeed = PlayerSpeed;
 	GetCharacterMovement()->JumpZVelocity = JumpForce;
@@ -66,11 +68,18 @@ void APlayerCharacter::BeginPlay()
 void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	UpdatePlayerRotation();
 	
+	if (!HasSetupHealth) 
+	{
+		HasSetupHealth = true;
+		GameView = UIManager->GetView<UGameViewWidget>();
+		GameView->MaxPlayerHealth = MaxHealth;
+		SetHealth(MaxHealth);
+	}
+
 	if (!HasMoved) HasMoved = !GetActorLocation().Equals(StartTransform.GetLocation(), 1.0f);
 
+	UpdatePlayerRotation();
 	LimitSpeed();
 
 	ATile* currentTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
@@ -97,7 +106,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	//PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAxis("MoveForward", this, &APlayerCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &APlayerCharacter::MoveRight);
 	PlayerInputComponent->BindKey(EKeys::W, IE_Pressed, this, &APlayerCharacter::DashForward);
@@ -105,7 +114,8 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindKey(EKeys::A, IE_Pressed, this, &APlayerCharacter::DashLeft);
 	PlayerInputComponent->BindKey(EKeys::D, IE_Pressed, this, &APlayerCharacter::DashRight);
 	PlayerInputComponent->BindKey(EKeys::LeftShift, IE_Pressed, this, &APlayerCharacter::DashMoveDirection);
-	PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &APlayerCharacter::Shoot);
+	PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &APlayerCharacter::StartShoot);
+	PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Released, this, &APlayerCharacter::StopShoot);
 }
 
 void APlayerCharacter::LimitSpeed()
@@ -140,9 +150,24 @@ void APlayerCharacter::OnDeath()
 	GameManager->RestartGame();
 }
 
+void APlayerCharacter::SetHealth(float Health)
+{
+	if (!GameView) return;
+	CurrentHealth = FMath::Clamp(Health, 0.0, MaxHealth);
+	GameView->CurrentPlayerHealth = CurrentHealth;
+}
+
+void APlayerCharacter::TakeHealth(float Amount)
+{
+	SetHealth(CurrentHealth - Amount);
+	if (CurrentHealth <= 0) OnDeath();
+}
+
 void APlayerCharacter::ResetPlayer()
 {
+	SetHealth(MaxHealth);
 	IsDashing = false;
+	HasMoved = false;
 	GetCharacterMovement()->Velocity = FVector::ZeroVector;
 	SetActorTransform(StartTransform);
 }
@@ -176,9 +201,9 @@ void APlayerCharacter::CheckTile(FVector pos)
 	if (tile != nullptr) tile->TriggerFall();
 }
 
-void APlayerCharacter::OnHit()
+void APlayerCharacter::OnHit(const FBullet& Bullet)
 {
-	OnDeath();
+	TakeHealth(Bullet.Damage);
 }
 
 void APlayerCharacter::DashForward()
@@ -209,6 +234,24 @@ void APlayerCharacter::DashMoveDirection()
 void APlayerCharacter::Shoot()
 {
 	ShooterComp->Shoot(GetVelocity());
+}
+
+void APlayerCharacter::StartShoot()
+{
+	Shoot();
+	if (IsFiring) return;
+	IsFiring = true;
+	ShooterComp->Disable(true);
+	ShooterComp->SelectedPattern.FireRate = FiringRate;
+	ShooterComp->Enable(true);
+}
+
+void APlayerCharacter::StopShoot()
+{
+	if (!IsFiring) return;
+	IsFiring = false;
+	ShooterComp->SelectedPattern.FireRate = 0;
+	ShooterComp->Disable(true);
 }
 
 bool APlayerCharacter::CanDash()

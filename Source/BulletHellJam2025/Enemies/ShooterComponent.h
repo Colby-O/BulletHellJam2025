@@ -43,12 +43,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float CollisionDist = 100;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float Damage = 25;
+
 	UPROPERTY(EditAnywhere)
 	TArray<FShootPattern> ShootPatterns;
 
 	FShootPattern SelectedPattern;
 	int SelectedPatternIndex;
 
+	FRotator StartRotation;
 	FVector VelPrediction;
 	FVector LastKnownPostion;
 	float Timer;

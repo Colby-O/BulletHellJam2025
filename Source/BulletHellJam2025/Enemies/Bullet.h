@@ -11,7 +11,7 @@ struct BULLETHELLJAM2025_API FBullet
 	
 public:	
 	FBullet();
-	FBullet(int InstanceID, FVector F, float S, float L, float hitDist, FString T = "");
+	FBullet(int InstanceID, FVector F, float S, float L, float hitDist, float dmg, FString T = "");
 	~FBullet();
 
 	int ID;
@@ -19,6 +19,7 @@ public:
 	float LifeSpan;
 	float Life;
 	float CollisionDist;
+	float Damage;
 	FVector Forward;
 	FString Tag;
 };

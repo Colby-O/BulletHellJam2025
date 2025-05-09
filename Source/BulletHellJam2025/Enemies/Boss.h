@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "BulletHellJam2025/UI/GameViewWidget.h"
 #include "Boss.generated.h"
 
 UCLASS()
@@ -20,6 +21,16 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	class UShooterComponent* ShooterComp;
+	class AUIManager* UIManager;
 
+	UGameViewWidget* GameView;
+
+	bool HasSetupHealth = false;
+
+	float MaxHealth = 1000;
+	float CurrentHealth;
+
+	void SetHealth(float Health);
+	void TakeHealth(float Amount);
 	void ResetBoss();
 };

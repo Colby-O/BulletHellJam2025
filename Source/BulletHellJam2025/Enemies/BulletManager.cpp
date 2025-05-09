@@ -26,9 +26,9 @@ void ABulletManager::BeginPlay()
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 	Player = Cast<APlayerCharacter>(UGameplayStatics::GetActorOfClass(GetWorld(), APlayerCharacter::StaticClass()));
 
-	FVector currenLoc = GetActorLocation();
-	currenLoc.Z = Player->GetActorLocation().Z;
-	SetActorLocation(currenLoc);
+	//FVector currenLoc = GetActorLocation();
+	//currenLoc.Z = Player->GetActorLocation().Z;
+	//SetActorLocation(currenLoc);
 
 	if (BaseMat) 
 	{
@@ -69,14 +69,14 @@ void ABulletManager::ResetBullets()
 	IsMarkedForReset = false;
 }
 
-void ABulletManager::SpawnBullet(FVector Location, FRotator Rotation, FVector Scale, FVector Forward, float Speed, float LifeSpan, float CollisionDist, FLinearColor Color, FString Tag)
+void ABulletManager::SpawnBullet(FVector Location, FRotator Rotation, FVector Scale, FVector Forward, float Speed, float LifeSpan, float CollisionDist, float Damage, FLinearColor Color, FString Tag)
 {
 	FTransform transform;
 	transform.SetLocation(Location);
 	transform.SetRotation(Rotation.Quaternion());
 	transform.SetScale3D(Scale);
 	int instanceID = InstancedMesh->AddInstance(transform);
-	FBullet bullet = FBullet(instanceID, Forward, Speed, LifeSpan, CollisionDist, Tag);
+	FBullet bullet = FBullet(instanceID, Forward, Speed, LifeSpan, CollisionDist, Damage, Tag);
 	Bullets.Add(bullet);
 	SetBulletColor(bullet, Color);
 	UE_LOG(LogTemp, Warning, TEXT("Spawning Bullet At: %s"), *transform.GetLocation().ToString());
@@ -121,7 +121,15 @@ void ABulletManager::ProcessCollisions()
 
 		ATile* bulletTile = GridManager->GetTileAt(GridManager->WorldToGrid(bulletLoc));
 
-		if (!bulletTile || !bulletTile->IsEnable) continue;
+		if (!bulletTile) 
+		{
+			DestroyBullet(bullet.ID, i);
+			continue;
+		}
+		else if (!bulletTile->IsEnable) 
+		{
+			continue;
+		}
 
 		TArray<AActor*> actors;
 		actors.Add(Player);
@@ -138,7 +146,7 @@ void ABulletManager::ProcessCollisions()
 				if (actor->IsA(APlayerCharacter::StaticClass()) && bullet.Tag.Compare("Player", ESearchCase::IgnoreCase) != 0)
 				{
 					APlayerCharacter* player = Cast<APlayerCharacter>(actor);
-					player->OnHit();
+					player->OnHit(bullet);
 					UE_LOG(LogTemp, Warning, TEXT("Player Hit!"));
 					DestroyBullet(bullet.ID, i);
 					break;
