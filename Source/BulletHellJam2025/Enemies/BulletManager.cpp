@@ -169,7 +169,7 @@ void ABulletManager::ProcessCollisions()
 			{
 				ABoss* boss = Cast<ABoss>(actor);
 				UE_LOG(LogTemp, Warning, TEXT("Boss Hit!"));
-				if (boss->CanTakeDamage && FVector::Dist(actorLoc, bulletLoc) < boss->CollisonDist) 
+				if (boss->IsOpen && FVector::Dist(actorLoc, bulletLoc) < boss->CollisonDist) 
 				{
 					UE_LOG(LogTemp, Warning, TEXT("Boss Damaged!"));
 					boss->TakeHealth(bullet.Damage);

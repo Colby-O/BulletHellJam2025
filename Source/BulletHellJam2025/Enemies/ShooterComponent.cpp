@@ -2,6 +2,7 @@
 #include "BulletHellJam2025/Enemies/BulletManager.h"
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/Player/PlayerCharacter.h"
+#include "BulletHellJam2025/Enemies/Boss.h"
 #include <Kismet/GameplayStatics.h>
 
 UShooterComponent::UShooterComponent()
@@ -80,6 +81,8 @@ void UShooterComponent::Shoot(FVector Vel)
 
 	if (SelectedPattern.IsGridPattern() && !SelectedPattern.HasRanGridPattern) 
 	{
+		if (Boss) Boss->PlayStompAnimation();
+
 		if (SelectedPattern.IsRollOutGridPattern) GridManager->RollOutAttack(GetComponentLocation(), SelectedPattern.SpawnDirections, SelectedPattern.RollOutWidth, SelectedPattern.RollOutRate, SelectedPattern.TileFallDelay);
 		else if (SelectedPattern.IsMeteoriteGridPattern) GridManager->MeteoriteAttack(SelectedPattern.MeteoriteSize, SelectedPattern.MeteoriteGap, SelectedPattern.TileFallDelay);
 		else GridManager->RadiusAttack(GetComponentLocation(), (Player->GetActorLocation() - GetComponentLocation()).GetSafeNormal(), SelectedPattern.RadiusRate, SelectedPattern.TileFallDelay);
@@ -122,10 +125,16 @@ FVector UShooterComponent::GetShootDirection(int index)
 	return GetComponentRotation().RotateVector(SelectedPattern.SpawnDirections[index]).GetSafeNormal();
 }
 
+void UShooterComponent::SetBoss(ABoss* B)
+{
+	Boss = B;
+}
+
 void UShooterComponent::NextPattern()
 {
 	if (ShootPatterns.Num() == 0) return;
 	Disable(true);
+	if (Boss) Boss->Open();
 	SelectedPattern.HasRanGridPattern = false;
 	SelectedPatternIndex = (SelectedPatternIndex + 1) % ShootPatterns.Num();
 	SelectedPattern = ShootPatterns[SelectedPatternIndex];
@@ -169,6 +178,9 @@ void UShooterComponent::Disable(bool Force)
 
 	Timer = 0;
 	GetOwner()->GetWorldTimerManager().ClearTimer(FireTimerHandler);
-	SetRelativeRotation(StartRotation);
-	RawRotation = StartRotation;
+	if (ResetRotation) 
+	{
+		SetRelativeRotation(StartRotation);
+		RawRotation = StartRotation;
+	}
 }

@@ -40,6 +40,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	TSubclassOf<AActor> EnemyPrefab;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
+	USkeletalMeshComponent* Mesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
+	UAnimSequence* OpenAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
+	UAnimSequence* CloseAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
+	UAnimSequence* StompAnimation;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Start Stage")
 	float InitalHealthFillDuration;
 
@@ -55,6 +67,7 @@ public:
 
 	class AGridManager* GridManager;
 	class AUIManager* UIManager;
+	class APlayerCharacter* Player;
 	UGameViewWidget* GameView;
 
 	bool HasSetupHealth = false;
@@ -69,12 +82,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collsions")
 	float CollisonDist = 500;
 	float HealthAtStartOfStage;
-	bool CanTakeDamage = true;
-
 
 	bool IsHealthFilling = false;
 	float CurrentHealthFillDuration;
 	float CurrentFillTarget;
+
+	bool IsOpen;
 
 	void NextStage();
 	void OnStageChange(EBossStage Stage);
@@ -88,5 +101,10 @@ public:
 	void HealthFillStep();
 	void SetHealth(float Health);
 	void TakeHealth(float Amount);
+	FVector GetDirectionToPlayer();
+	void RotateTowardsPlayer();
+	void Open(bool Force = false);
+	void Close(bool Force = false);
+	void PlayStompAnimation();
 	void ResetBoss();
 };

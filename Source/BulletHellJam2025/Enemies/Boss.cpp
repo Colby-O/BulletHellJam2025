@@ -1,6 +1,7 @@
 #include "BulletHellJam2025/Enemies/Boss.h"
 #include "BulletHellJam2025/Enemies/BaseEnemy.h"
 #include "BulletHellJam2025/Enemies/ShooterComponent.h"
+#include "BulletHellJam2025/Player/PlayerCharacter.h"
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/UI/UIManager.h"
 #include <Kismet/GameplayStatics.h>
@@ -16,9 +17,12 @@ void ABoss::BeginPlay()
 	
 	UIManager = Cast<AUIManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AUIManager::StaticClass()));
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
+	Player = Cast<APlayerCharacter>(UGameplayStatics::GetActorOfClass(GetWorld(), APlayerCharacter::StaticClass()));
+
 	HasSetupHealth = false;
 	CurrentHealth = 0;
 	CurrentStage = EBossStage::None;
+	ShooterComp->SetBoss(this);
 	ShooterComp->Disable();
 }
 
@@ -36,6 +40,7 @@ void ABoss::Tick(float DeltaTime)
 	}
 
 	StageUpdate(CurrentStage);
+	RotateTowardsPlayer();
 }
 
 void ABoss::NextStage()
@@ -58,8 +63,8 @@ void ABoss::OnStageChange(EBossStage Stage)
 		BeginStartStage();
 		break;
 	case Stage1:
-		CanTakeDamage = true;
 		ShooterComp->Enable();
+		Open();
 		break;
 	case Stage2:
 		break;
@@ -101,6 +106,7 @@ void ABoss::StageReset(EBossStage Stage)
 		break;
 	case Stage1:
 		SetHealth(HealthAtStartOfStage);
+		Open(true);
 		break;
 	case Stage2:
 		break;
@@ -120,7 +126,8 @@ void ABoss::BeginStartStage()
 		StartHealthFill(MaxHealth * InitalHealthFillPercentage, InitalHealthFillDuration);
 	}
 
-	CanTakeDamage = false;
+	Mesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	Mesh->PlayAnimation(CloseAnimation, false);
 
 	GridManager->Spawn(EnemyPrefab, StartStageNumberOfEnemies);
 }
@@ -186,8 +193,45 @@ void ABoss::SetHealth(float Health)
 
 void ABoss::TakeHealth(float Amount)
 {
-	if (!CanTakeDamage && Amount >= 0) return;
+	if (!IsOpen && Amount >= 0) return;
 	SetHealth(CurrentHealth - Amount);
+}
+
+FVector ABoss::GetDirectionToPlayer()
+{
+	FVector rawDirectionToPlayer = (Player->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+	return -FVector(rawDirectionToPlayer.X, rawDirectionToPlayer.Y, 0);
+}
+
+void ABoss::RotateTowardsPlayer()
+{
+	if (!IsOpen) return;
+
+	FVector directionToPlayer = GetDirectionToPlayer();
+	SetActorRotation(directionToPlayer.Rotation());
+}
+
+void ABoss::Open(bool Force)
+{
+	if (IsOpen && !Force) return;
+	IsOpen = true;
+	Mesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	Mesh->PlayAnimation(OpenAnimation, false);
+}
+
+void ABoss::Close(bool Force)
+{
+	if (!IsOpen && !Force) return;
+	IsOpen = false;
+	Mesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	Mesh->PlayAnimation(CloseAnimation, false);
+}
+
+void ABoss::PlayStompAnimation()
+{
+	Mesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	Mesh->PlayAnimation(StompAnimation, false);
+	IsOpen = false;
 }
 
 void ABoss::ResetBoss()

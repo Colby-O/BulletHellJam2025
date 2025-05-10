@@ -27,6 +27,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "References")
 	class ABulletManager* BulletManager;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool ResetRotation = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FString FromTag;
@@ -54,6 +57,7 @@ public:
 
 	class AGridManager* GridManager;
 	class APlayerCharacter* Player;
+	class ABoss* Boss;
 
 	FRotator StartRotation;
 	FVector VelPrediction;
@@ -66,6 +70,7 @@ public:
 	void ShootInternal();
 	void SetFrom(FString Tag);
 	FVector GetShootDirection(int index);
+	void SetBoss(ABoss* B);
 	void NextPattern();
 	void ResetShooter();
 
