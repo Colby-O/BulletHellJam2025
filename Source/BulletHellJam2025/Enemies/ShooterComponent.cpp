@@ -22,13 +22,7 @@ void UShooterComponent::BeginPlay()
 	RawRotation = GetRelativeRotation();
 	StartRotation = GetRelativeRotation();
 
-	int i = 0;
-	for (FShootPattern& p : ShootPatterns) 
-	{
-		p.ID = i++;
-		p.Awake();
-		p.HasRanGridPattern = false;
-	}
+	InitShootPattern();
 
 	if (ShootPatterns.Num() > 0) 
 	{
@@ -39,6 +33,16 @@ void UShooterComponent::BeginPlay()
 	VelPrediction = FVector::ZeroVector;
 
 	Enable();
+}
+
+void UShooterComponent::SetShootPattern(TArray<FShootPattern> Patterns)
+{
+	BulletManager->IsMarkedToRemoveBossBullets = true;
+	IsMarkedToStartNewPattern = true;
+	ShootPatterns.Empty();
+	ShootPatterns = TArray<FShootPattern>(Patterns);
+	InitShootPattern();
+	UE_LOG(LogTemp, Warning, TEXT("Setting Shoot Pattern. Number of Patterns Is: %d"), ShootPatterns.Num());
 }
 
 float UShooterComponent::NormalizeAngle360(float Angle)
@@ -58,6 +62,12 @@ float UShooterComponent::ClampAngle(float Angle, float Min, float Max, bool CanL
 void UShooterComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (IsMarkedToStartNewPattern)
+	{
+		IsMarkedToStartNewPattern = false;
+		ResetShooter();
+	}
 
 	if (!IsEnabled || ShootPatterns.Num() == 0) return;
 
@@ -171,10 +181,12 @@ void UShooterComponent::Enable(bool Force)
 	else GetOwner()->GetWorldTimerManager().SetTimer(FireTimerHandler, this, &UShooterComponent::ShootInternal, 0.01f, false);
 }
 
-void UShooterComponent::Disable(bool Force)
+void UShooterComponent::Disable(bool Force, bool DestoryAll)
 {
 	if (!IsEnabled) return;
 	IsEnabled = false;
+
+	if (DestoryAll) BulletManager->IsMarkedToRemoveBossBullets = true;
 
 	Timer = 0;
 	GetOwner()->GetWorldTimerManager().ClearTimer(FireTimerHandler);
@@ -182,5 +194,16 @@ void UShooterComponent::Disable(bool Force)
 	{
 		SetRelativeRotation(StartRotation);
 		RawRotation = StartRotation;
+	}
+}
+
+void UShooterComponent::InitShootPattern()
+{
+	int i = 0;
+	for (FShootPattern& p : ShootPatterns)
+	{
+		p.ID = i++;
+		p.Awake();
+		p.HasRanGridPattern = false;
 	}
 }

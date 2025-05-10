@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "BulletHellJam2025/UI/GameViewWidget.h"
+#include "BulletHellJam2025/Enemies/ShootPattern.h"
 #include "Boss.generated.h"
 
 UENUM(BlueprintType)
@@ -44,6 +45,12 @@ public:
 	USkeletalMeshComponent* Mesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
+	UMaterialInterface* OpenMat;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
+	UMaterialInterface* ClosedMat;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	UAnimSequence* OpenAnimation;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
@@ -51,6 +58,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	UAnimSequence* StompAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage General")
+	float PercentHealthNextStage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Start Stage")
+	TArray<FShootPattern> StartStageShootPattern;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Start Stage")
 	float InitalHealthFillDuration;
@@ -61,9 +74,25 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Start Stage")
 	float InitalHealthFillPercentage;
 
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Start Stage")
-	float StartStageNumberOfEnemies = 5;
+	int StartStageNumberOfEnemies = 5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 1")
+	TArray<FShootPattern> Stage1ShootPattern;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 1")
+	int Stage1NumberOfEnemies = 7;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 1")
+	float Stage1HealthFillDuration;
+
+	bool IsInStage1Cooldown = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 2")
+	TArray<FShootPattern> Stage2ShootPattern;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 3")
+	TArray<FShootPattern> Stage3ShootPattern;
 
 	class AGridManager* GridManager;
 	class AUIManager* UIManager;
@@ -87,15 +116,33 @@ public:
 	float CurrentHealthFillDuration;
 	float CurrentFillTarget;
 
+	UPROPERTY(BlueprintReadonly)
 	bool IsOpen;
+
+	UPROPERTY(BlueprintReadonly)
+	bool IsStomping;
 
 	void NextStage();
 	void OnStageChange(EBossStage Stage);
 	void StageUpdate(EBossStage Stage);
 	void StageReset(EBossStage Stage);
+
 	void BeginStartStage();
 	void StartUpdate();
 	void StartStageReset();
+
+	void BeginStage1();
+	void Stage1Update();
+	void Stage1Reset();
+
+	void BeginStage2();
+	void Stage2Update();
+	void Stage2Reset();
+
+	void BeginStage3();
+	void Stage3Update();
+	void Stage3Reset();
+
 	void StartHealthFill(float To, float Duration);
 	void StopHealthFill();
 	void HealthFillStep();

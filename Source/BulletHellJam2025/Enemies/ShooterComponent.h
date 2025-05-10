@@ -59,13 +59,17 @@ public:
 	class APlayerCharacter* Player;
 	class ABoss* Boss;
 
+	bool IsMarkedToStartNewPattern = false;
+
 	FRotator StartRotation;
 	FVector VelPrediction;
 	FVector LastKnownPostion;
 	float Timer;
 
 	void Enable(bool Force = false);
-	void Disable(bool Force = false);
+	void Disable(bool Force = false, bool DestoryAll = false);
+	void InitShootPattern();
+	void SetShootPattern(TArray<FShootPattern> Patterns);
 	void Shoot(FVector Vel = FVector::ZeroVector);
 	void ShootInternal();
 	void SetFrom(FString Tag);

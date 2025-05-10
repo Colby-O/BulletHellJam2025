@@ -4,6 +4,7 @@
 #include "BulletHellJam2025/Player/PlayerCharacter.h"
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/UI/UIManager.h"
+#include "Components/SkeletalMeshComponent.h"
 #include <Kismet/GameplayStatics.h>
 
 ABoss::ABoss()
@@ -63,10 +64,10 @@ void ABoss::OnStageChange(EBossStage Stage)
 		BeginStartStage();
 		break;
 	case Stage1:
-		ShooterComp->Enable();
-		Open();
+		BeginStage1();
 		break;
 	case Stage2:
+		BeginStage2();
 		break;
 	case Stage3:
 		break;
@@ -85,8 +86,10 @@ void ABoss::StageUpdate(EBossStage Stage)
 		StartUpdate();
 		break;
 	case Stage1:
+		Stage1Update();
 		break;
 	case Stage2:
+		Stage2Update();
 		break;
 	case Stage3:
 		break;
@@ -105,10 +108,10 @@ void ABoss::StageReset(EBossStage Stage)
 		StartStageReset();
 		break;
 	case Stage1:
-		SetHealth(HealthAtStartOfStage);
-		Open(true);
+		Stage1Reset();
 		break;
 	case Stage2:
+		Stage2Reset();
 		break;
 	case Stage3:
 		break;
@@ -130,6 +133,8 @@ void ABoss::BeginStartStage()
 	Mesh->PlayAnimation(CloseAnimation, false);
 
 	GridManager->Spawn(EnemyPrefab, StartStageNumberOfEnemies);
+
+	ShooterComp->SetShootPattern(StartStageShootPattern);
 }
 
 void ABoss::StartUpdate()
@@ -153,6 +158,83 @@ void ABoss::StartStageReset()
 	//SetHealth(0);
 	//StopHealthFill();
 	//BeginStartStage();
+}
+
+void ABoss::BeginStage1()
+{
+	IsInStage1Cooldown = false;
+	ShooterComp->SetShootPattern(Stage1ShootPattern);
+	Open();
+}
+
+void ABoss::Stage1Update()
+{
+	if (CurrentHealth <= PercentHealthNextStage * MaxHealth && !IsInStage1Cooldown)
+	{
+		IsInStage1Cooldown = true;
+		GridManager->Spawn(EnemyPrefab, Stage1NumberOfEnemies);
+
+		ShooterComp->Disable(true, true);
+
+		Close();
+
+		if (!IsHealthFilling && CurrentHealth < MaxHealth) {
+			StartHealthFill(MaxHealth, Stage1HealthFillDuration);
+		}
+	}
+
+	if (IsInStage1Cooldown && ABaseEnemy::Enemies.Num() == 0) 
+	{
+		StopHealthFill();
+		NextStage();
+	}
+}
+
+void ABoss::Stage1Reset()
+{
+	if (!IsInStage1Cooldown) 
+	{
+		SetHealth(HealthAtStartOfStage);
+		Open(true);
+	}
+	else 
+	{
+		Close(true);
+		ShooterComp->Disable(true, true);
+		ABaseEnemy::DestroyAllEnemies();
+		GridManager->Spawn(EnemyPrefab, Stage1NumberOfEnemies);
+	}
+}
+
+void ABoss::BeginStage2()
+{
+	ShooterComp->SetShootPattern(Stage2ShootPattern);
+	Open();
+}
+
+void ABoss::Stage2Update()
+{
+
+}
+
+void ABoss::Stage2Reset()
+{
+
+}
+
+void ABoss::BeginStage3()
+{
+
+}
+
+void ABoss::Stage3Update()
+{
+
+}
+
+void ABoss::Stage3Reset()
+{
+
 }
 
 void ABoss::StartHealthFill(float To, float Duration)
@@ -205,7 +287,7 @@ FVector ABoss::GetDirectionToPlayer()
 
 void ABoss::RotateTowardsPlayer()
 {
-	if (!IsOpen) return;
+	if (!IsOpen && !IsStomping) return;
 
 	FVector directionToPlayer = GetDirectionToPlayer();
 	SetActorRotation(directionToPlayer.Rotation());
@@ -215,6 +297,7 @@ void ABoss::Open(bool Force)
 {
 	if (IsOpen && !Force) return;
 	IsOpen = true;
+	IsStomping = false;
 	Mesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 	Mesh->PlayAnimation(OpenAnimation, false);
 }
@@ -232,6 +315,7 @@ void ABoss::PlayStompAnimation()
 	Mesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 	Mesh->PlayAnimation(StompAnimation, false);
 	IsOpen = false;
+	IsStomping = true;
 }
 
 void ABoss::ResetBoss()
