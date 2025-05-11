@@ -5,6 +5,7 @@
 #include "BulletHellJam2025/GameManager.h"
 #include "BulletHellJam2025/Grid/Tile.h"
 #include "BulletHellJam2025/Core/Vector2Int.h"
+#include "BulletHellJam2025/UI/PauseView.h"
 #include "BulletHellJam2025/Enemies/ShooterComponent.h"
 #include "Camera/CameraComponent.h"
 #include "BulletHellJam2025/UI/UIManager.h"
@@ -69,19 +70,14 @@ void APlayerCharacter::BeginPlay()
 
 	StartTransform = GetActorTransform();
 	HasMoved = false;
+	IsPaused = true;
 }
 
 void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
-	if (!HasSetupHealth) 
-	{
-		HasSetupHealth = true;
-		GameView = UIManager->GetView<UGameViewWidget>();
-		GameView->MaxPlayerHealth = MaxHealth;
-		SetHealth(MaxHealth);
-	}
+	if (IsPaused) return;
 
 	if (!HasMoved)
 	{
@@ -143,11 +139,21 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindKey(EKeys::Gamepad_RightTrigger, IE_Pressed, this, &APlayerCharacter::StartShoot);
 	PlayerInputComponent->BindKey(EKeys::Gamepad_RightShoulder, IE_Released, this, &APlayerCharacter::StopShoot);
 	PlayerInputComponent->BindKey(EKeys::Gamepad_RightTrigger, IE_Released, this, &APlayerCharacter::StopShoot);
+	PlayerInputComponent->BindKey(EKeys::Escape, IE_Released, this, &APlayerCharacter::TogglePause);
+	PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Released, this, &APlayerCharacter::TogglePause);
 }
 
 void APlayerCharacter::RestartBoss() 
 {
 	if (Boss) Boss->FlagForRestart = true;
+}
+
+void APlayerCharacter::TogglePause()
+{
+	if (!UIManager || UIManager->CurrentViewIsA<UMainMenuView>()) return;
+
+	if (IsPaused) ResumeGame();
+	else PauseGame();
 }
 
 void APlayerCharacter::LimitSpeed()
@@ -221,6 +227,7 @@ void APlayerCharacter::CheckIfUsingGamepad()
 
 void APlayerCharacter::TakeHealth(float Amount)
 {
+	if (IsPaused) return;
 	SetHealth(CurrentHealth - Amount);
 	if (CurrentHealth <= 0) OnDeath();
 }
@@ -348,7 +355,7 @@ void APlayerCharacter::StopShoot()
 
 bool APlayerCharacter::CanDash()
 {
-	return !IsDashing && !GetCharacterMovement()->IsFalling();
+	return !IsDashing && !GetCharacterMovement()->IsFalling() && !IsPaused;
 }
 
 void APlayerCharacter::Dash(FVector Direction)
@@ -370,24 +377,73 @@ void APlayerCharacter::StopDashing()
 	GameManager->PlayerDashInstancedMesh->ClearInstances();
 }
 
+void APlayerCharacter::StartGame()
+{
+	IsPaused = false;
+
+	GameView = UIManager->GetView<UGameViewWidget>();
+	GameView->MaxPlayerHealth = MaxHealth;
+	SetHealth(MaxHealth);
+
+	GetWorldTimerManager().ClearTimer(BossRestartHandle);
+	Boss->CurrentStage = EBossStage::None;
+	Boss->ShooterComp->Disable();
+	HasMoved = false;
+
+	UIManager->HideAll();
+	UIManager->ShowView<UGameViewWidget>();
+}
+
+void APlayerCharacter::PauseGame()
+{
+	if (IsPaused) return;
+	IsPaused = true;
+	UIManager->HideAll();
+	UIManager->ShowView<UPauseView>();
+	GridManager->Pause();
+}
+
+void APlayerCharacter::ResumeGame()
+{
+	if (!IsPaused) return;
+	IsPaused = false;
+	UIManager->HideAll();
+	UIManager->ShowView<UGameViewWidget>();
+	GridManager->Resume();
+}
+
+void APlayerCharacter::ReturnToMenu()
+{
+	IsPaused = true;
+	UIManager->HideAll();
+	UIManager->ShowView<UMainMenuView>();
+
+	GetWorldTimerManager().ClearTimer(BossRestartHandle);
+
+	GameManager->ResetGame();
+}
 void APlayerCharacter::MoveForward(float Input)
 {
+	if (IsPaused) return;
 	FVector Forward = Camera->GetForwardVector();
 	AddMovementInput(Forward * Input);
 }
 
 void APlayerCharacter::MoveRight(float Input)
 {
+	if (IsPaused) return;
 	FVector Right = Camera->GetRightVector();
 	AddMovementInput(Right * Input);
 }
 
 void APlayerCharacter::LookForward(float Input)
 {
+	if (IsPaused) return;
 	RightStickInput.Y = Input;
 }
 
 void APlayerCharacter::LookRight(float Input)
 {
+	if (IsPaused) return;
 	RightStickInput.X = Input;
 }

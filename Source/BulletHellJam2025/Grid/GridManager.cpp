@@ -119,6 +119,22 @@ void AGridManager::ResetGrid()
 	}
 }
 
+void AGridManager::Pause()
+{
+	for (TPair<FVector2Int, ATile*>& pair : Tiles)
+	{
+		pair.Value->Pause();
+	}
+}
+
+void AGridManager::Resume()
+{
+	for (TPair<FVector2Int, ATile*>& pair : Tiles)
+	{
+		pair.Value->Resume();
+	}
+}
+
 FVector AGridManager::GetRandomLocation()
 {
 	TArray<ATile*> tileList;

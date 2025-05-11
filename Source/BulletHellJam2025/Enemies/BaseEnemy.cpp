@@ -50,6 +50,8 @@ void ABaseEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (Player->IsPaused) return;
+
 	AttackRange = ShooterComp->SelectedPattern.Distance;
 
 	if (IsKnockingBack) return;

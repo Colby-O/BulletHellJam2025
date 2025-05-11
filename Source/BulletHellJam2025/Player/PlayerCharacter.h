@@ -1,8 +1,9 @@
-#pragma once
+ #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "BulletHellJam2025/UI/GameViewWidget.h"
+#include "BulletHellJam2025/UI/MainMenuView.h"
 #include "BulletHellJam2025/Enemies/Bullet.h"
 #include "PlayerCharacter.generated.h"
 
@@ -100,7 +101,6 @@ protected:
 	float PlayerHeight;
 	bool IsDashing;
 	bool HasMoved;
-	bool HasSetupHealth = false;
 	bool IsFiring = false;
 	float FiringRate = 0.1;
 
@@ -131,8 +131,15 @@ protected:
 	void SetHealth(float Health);
 	void CheckIfUsingGamepad();
 	void RestartBoss();
+	void TogglePause();
 
 public:
+	bool IsPaused = true;
+
+	void StartGame();
+	void PauseGame();
+	void ResumeGame();
+	void ReturnToMenu();
 	void OnHit(const FBullet& Bullet);
 	void TakeHealth(float Amount);
 	void ResetPlayer();

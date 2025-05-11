@@ -47,6 +47,7 @@ void ABulletManager::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	if (IsMarkedForReset) ResetBullets();
 	else if (IsMarkedToRemoveBossBullets) DestroyBossBullets();
+	if (Player->IsPaused) return;
 	ProcessCollisions();
 	Update(DeltaTime);
 }

@@ -1,5 +1,6 @@
 #include "BulletHellJam2025/Grid/Tile.h"
 #include "BulletHellJam2025/Grid/GridManager.h"
+#include "BulletHellJam2025/Player/PlayerCharacter.h"
 #include "Kismet/GameplayStatics.h"
 
 ATile::ATile()
@@ -42,6 +43,20 @@ void ATile::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
+void ATile::StopFallIfPossible() 
+{
+	if (IsFalling && !HasFallen) 
+	{
+		GetWorld()->GetTimerManager().ClearTimer(TimerHandler);
+		SetColor(DefaultColor);
+		FVector pos = GetActorLocation();
+		pos.Z = 0;
+		SetActorLocation(pos);
+		IsFalling = false;
+		HasFallen = false;
+	}
+}
+
 void ATile::TriggerFall(float FallDelayOverride)
 {
 	if (IsFalling || IsDisabled) return;
@@ -59,6 +74,7 @@ void ATile::StartFall()
 
 void ATile::ResetTile()
 {
+	if (IsPaused) return;
 	FVector pos = GetActorLocation();
 	pos.Z += FallAmount / 100.0;
 
@@ -77,6 +93,7 @@ void ATile::ResetTile()
 
 void ATile::Fall()
 {
+	if (IsPaused) return;
 	FVector pos = GetActorLocation();
 	pos.Z -= FallAmount / 100.0;
 
@@ -112,6 +129,26 @@ void ATile::SetColor(FLinearColor Color)
 	{
 		DynMaterial->SetVectorParameterValue("BaseColor", Color);
 		Mesh->SetMaterial(1, DynMaterial);
+	}
+}
+
+void ATile::Pause()
+{
+	IsPaused = true;
+	if (IsFalling && !HasFallen) 
+	{
+		RemainingTime = GetWorld()->GetTimerManager().GetTimerRemaining(TimerHandler);
+		GetWorld()->GetTimerManager().ClearTimer(TimerHandler);
+	}
+}
+
+void ATile::Resume()
+{
+	IsPaused = false;
+	if (IsFalling && !HasFallen)
+	{
+		GetWorld()->GetTimerManager().SetTimer(TimerHandler, this, &ATile::StartFall, RemainingTime, true);
+		RemainingTime = 0;
 	}
 }
 

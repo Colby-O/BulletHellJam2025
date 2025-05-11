@@ -27,4 +27,5 @@ public:
 	class ABoss* Boss;
 
 	void RestartGame();
+	void ResetGame();
 };

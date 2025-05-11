@@ -37,3 +37,19 @@ void AGameManager::RestartGame()
 	if (Boss) Boss->FlagForReset = true;
 	if (Player) Player->ResetPlayer();
 }
+
+
+void AGameManager::ResetGame()
+{
+	if (GridManager) 
+	{
+		GridManager->Resume();
+		GridManager->ResetGrid();
+	}
+	if (BulletManager) BulletManager->IsMarkedForReset = true;
+	if (Boss)
+	{
+		Boss->FlagForStageReset = true;
+	}
+	if (Player) Player->ResetPlayer();
+}

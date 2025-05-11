@@ -174,6 +174,8 @@ public:
 	float CollisonDist = 500;
 	float HealthAtStartOfStage;
 
+	bool FlagForStageReset = false;
+
 	bool IsHealthFilling = false;
 	float CurrentHealthFillDuration;
 	float CurrentFillTarget;

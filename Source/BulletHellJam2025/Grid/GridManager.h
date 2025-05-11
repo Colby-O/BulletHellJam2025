@@ -66,6 +66,8 @@ public:
 
 	void GenerateGrid();
 	void ResetGrid();
+	void Pause();
+	void Resume();
 
 	FVector GetRandomLocation();
 	void Spawn(TSubclassOf<AActor> Actor, int Number = 1);

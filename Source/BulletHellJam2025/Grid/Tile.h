@@ -28,6 +28,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ResetTile();
 
+	void StopFallIfPossible();
 	void StartFall();
 	void Fall();
 	void ForceStopFall();
@@ -56,6 +57,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite);
 	float FallAmount = 1000;
+
+	bool IsPaused = false;
+	float RemainingTime = -1;
+
+	void Pause();
+	void Resume();
 
 	FLinearColor DefaultColor;
 	FTimerHandle TimerHandler;

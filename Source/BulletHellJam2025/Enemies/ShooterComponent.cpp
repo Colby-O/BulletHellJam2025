@@ -63,6 +63,8 @@ void UShooterComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	if (Player->IsPaused) return;
+
 	if (IsMarkedToStartNewPattern)
 	{
 		IsMarkedToStartNewPattern = false;

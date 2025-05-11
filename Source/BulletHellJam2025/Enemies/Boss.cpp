@@ -5,6 +5,7 @@
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/UI/UIManager.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "BulletHellJam2025/Enemies/BulletManager.h"
 #include <Kismet/GameplayStatics.h>
 
 ABoss::ABoss()
@@ -28,6 +29,7 @@ void ABoss::BeginPlay()
 
 	FlagForReset = false;
 	FlagForRestart = false;
+	FlagForStageReset = false;
 	IsReset = false;
 
 	Close(true);
@@ -45,7 +47,18 @@ void ABoss::Tick(float DeltaTime)
 		SetHealth(0);
 	}
 
-	if (FlagForReset) 
+	if (FlagForStageReset) 
+	{
+		FlagForStageReset = false;
+		CurrentStage = EBossStage::None;
+		StopHealthFill();
+		IsInStageCooldown = false;
+		HasSetupHealth = false;
+		NextStage();
+		ResetBoss();
+		IsReset = true;
+	}
+	else if (FlagForReset) 
 	{
 		FlagForReset = false;
 		IsReset = true;
@@ -58,12 +71,15 @@ void ABoss::Tick(float DeltaTime)
 		IsReset = false;
 	}
 
+	if (Player->IsPaused) return;
+
 	StageUpdate(CurrentStage);
 	RotateTowardsPlayer();
 }
 
 void ABoss::NextStage()
 {
+	IsReset = false;
 	OnStageChange(++CurrentStage);
 }
 
@@ -130,6 +146,11 @@ void ABoss::StageUpdate(EBossStage Stage)
 
 void ABoss::StageRestart(EBossStage Stage)
 {
+	UEnum* EnumPtr = StaticEnum<EBossStage>();
+	if (EnumPtr) {
+		UE_LOG(LogTemp, Log, TEXT("Restart at Stage Changed to: %s"), *EnumPtr->GetNameStringByValue((int64)Stage));
+	}
+
 	switch (Stage)
 	{
 	case Start:
@@ -354,7 +375,8 @@ void ABoss::ResetBoss()
 {
 	SetHealth(HealthAtStartOfStage);
 	ShooterComp->ResetShooter();
-	ShooterComp->Disable();
+	ShooterComp->Disable(true);
+	ShooterComp->BulletManager->IsMarkedToRemoveBossBullets = true;
 	ABaseEnemy::DestroyAllEnemies();
 	Close(true);
 }
