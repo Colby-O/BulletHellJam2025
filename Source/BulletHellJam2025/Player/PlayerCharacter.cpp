@@ -11,6 +11,10 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/InputDeviceSubsystem.h"
+#include "BulletHellJam2025/Enemies/Boss.h"
+#include "Engine/LocalPlayer.h"
 
 APlayerCharacter::APlayerCharacter()
 {
@@ -53,6 +57,7 @@ void APlayerCharacter::BeginPlay()
 	GameManager = Cast<AGameManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGameManager::StaticClass()));
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 	UIManager = Cast<AUIManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AUIManager::StaticClass()));
+	Boss = Cast<ABoss>(UGameplayStatics::GetActorOfClass(GetWorld(), ABoss::StaticClass()));
 
 	GetCharacterMovement()->MaxWalkSpeed = PlayerSpeed;
 	GetCharacterMovement()->JumpZVelocity = JumpForce;
@@ -78,9 +83,18 @@ void APlayerCharacter::Tick(float DeltaTime)
 		SetHealth(MaxHealth);
 	}
 
-	if (!HasMoved) HasMoved = !GetActorLocation().Equals(StartTransform.GetLocation(), 1.0f);
-
-	UpdatePlayerRotation();
+	if (!HasMoved)
+	{
+		HasMoved = !GetActorLocation().Equals(StartTransform.GetLocation(), 1.0f);
+		if (HasMoved) 
+		{
+			GetWorld()->GetTimerManager().ClearTimer(BossRestartHandle);
+			if (Boss->CurrentStage == EBossStage::None) Boss->NextStage();
+			else GetWorld()->GetTimerManager().SetTimer(BossRestartHandle, this, &APlayerCharacter::RestartBoss, BossRestartDelay, false);	
+		}
+	}
+	
+	UpdatePlayerRotation(DeltaTime);
 	LimitSpeed();
 
 	ATile* currentTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
@@ -104,6 +118,8 @@ void APlayerCharacter::Tick(float DeltaTime)
 	}
 
 	ShooterComp->VelPrediction = GetVelocity();
+
+	CheckIfUsingGamepad();
 }
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -112,13 +128,26 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	//PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAxis("MoveForward", this, &APlayerCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &APlayerCharacter::MoveRight);
+	PlayerInputComponent->BindAxis("LookForward", this, &APlayerCharacter::LookForward);
+	PlayerInputComponent->BindAxis("LookRight", this, &APlayerCharacter::LookRight);
 	PlayerInputComponent->BindKey(EKeys::W, IE_Pressed, this, &APlayerCharacter::DashForward);
 	PlayerInputComponent->BindKey(EKeys::S, IE_Pressed, this, &APlayerCharacter::DashBackward);
 	PlayerInputComponent->BindKey(EKeys::A, IE_Pressed, this, &APlayerCharacter::DashLeft);
 	PlayerInputComponent->BindKey(EKeys::D, IE_Pressed, this, &APlayerCharacter::DashRight);
 	PlayerInputComponent->BindKey(EKeys::LeftShift, IE_Pressed, this, &APlayerCharacter::DashMoveDirection);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_LeftShoulder, IE_Pressed, this, &APlayerCharacter::DashMoveDirection);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_LeftTrigger, IE_Pressed, this, &APlayerCharacter::DashMoveDirection);
 	PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &APlayerCharacter::StartShoot);
 	PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Released, this, &APlayerCharacter::StopShoot);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_RightShoulder, IE_Pressed, this, &APlayerCharacter::StartShoot);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_RightTrigger, IE_Pressed, this, &APlayerCharacter::StartShoot);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_RightShoulder, IE_Released, this, &APlayerCharacter::StopShoot);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_RightTrigger, IE_Released, this, &APlayerCharacter::StopShoot);
+}
+
+void APlayerCharacter::RestartBoss() 
+{
+	if (Boss) Boss->FlagForRestart = true;
 }
 
 void APlayerCharacter::LimitSpeed()
@@ -132,18 +161,18 @@ void APlayerCharacter::LimitSpeed()
 	}
 }
 
-void APlayerCharacter::SetCursor()
+void APlayerCharacter::SetCursor(bool State)
 {
 	if (Controller)
 	{
-		Controller->bShowMouseCursor = true;
-		Controller->bEnableClickEvents = true;
-		Controller->bEnableMouseOverEvents = true;
+		Controller->bShowMouseCursor = State;
+		Controller->bEnableClickEvents = State;
+		Controller->bEnableMouseOverEvents = State;
 		if (UGameViewportClient* Viewport = GetWorld()->GetGameViewport())
 		{
 			Viewport->SetMouseLockMode(EMouseLockMode::LockAlways); 
-			Viewport->Viewport->CaptureMouse(true);
-			Viewport->Viewport->LockMouseToViewport(true);
+			Viewport->Viewport->CaptureMouse(State);
+			Viewport->Viewport->LockMouseToViewport(State);
 		}
 	}
 }
@@ -160,6 +189,36 @@ void APlayerCharacter::SetHealth(float Health)
 	GameView->CurrentPlayerHealth = CurrentHealth;
 }
 
+void APlayerCharacter::CheckIfUsingGamepad()
+{	
+	if (!Controller->WasInputKeyJustPressed(EKeys::AnyKey)) return;
+	
+	IsUsingGamepad = 
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_FaceButton_Bottom) ||
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_FaceButton_Right) ||
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_FaceButton_Left) ||
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_FaceButton_Top) ||
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_LeftShoulder) ||
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_RightShoulder) ||
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_LeftTrigger) ||
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_RightTrigger) || 
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_RightStick_Up) ||
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_RightStick_Down) || 
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_RightStick_Left) || 
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_RightStick_Right) || 
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_LeftStick_Up) ||
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_LeftStick_Down) ||
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_LeftStick_Left) ||
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_LeftStick_Right) || 
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_DPad_Up) || 
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_DPad_Down) || 
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_DPad_Left) || 
+		Controller->WasInputKeyJustPressed(EKeys::Gamepad_DPad_Right);
+
+	if (IsUsingGamepad) SetCursor(false);
+	else SetCursor(true);
+}
+
 void APlayerCharacter::TakeHealth(float Amount)
 {
 	SetHealth(CurrentHealth - Amount);
@@ -168,6 +227,7 @@ void APlayerCharacter::TakeHealth(float Amount)
 
 void APlayerCharacter::ResetPlayer()
 {
+	GetWorld()->GetTimerManager().ClearTimer(BossRestartHandle);
 	SetHealth(MaxHealth);
 	IsDashing = false;
 	HasMoved = false;
@@ -175,25 +235,43 @@ void APlayerCharacter::ResetPlayer()
 	SetActorTransform(StartTransform);
 }
 
-void APlayerCharacter::UpdatePlayerRotation()
+void APlayerCharacter::UpdatePlayerRotation(float DeltaTime)
 {
 	if (!Controller) return;
 
-	FVector worldPos, worldDir;
+	UE_LOG(LogTemp, Log, TEXT("Is Using Gamepad : %d"), IsUsingGamepad)
 
-	if (Controller->DeprojectMousePositionToWorld(worldPos, worldDir)) 
+	if (IsUsingGamepad) 
 	{
-		FVector start = worldPos;
-		FVector end = worldPos + worldDir * BIG_NUMBER;
+		UE_LOG(LogTemp, Log, TEXT("RightJoystickX : %f RightJoystickY : %f"), RightStickInput.X, RightStickInput.Y);
 
-		FPlane Plane(FVector(0, 0, PlaneHeight), FVector::UpVector);
-		FVector Target = FMath::LinePlaneIntersection(start, end, Plane);
+		if (!RightStickInput.IsNearlyZero())
+		{
+			float target = FMath::RadiansToDegrees(FMath::Atan2(RightStickInput.Y, RightStickInput.X));
 
-		FVector Direction = (GunMesh->GetComponentLocation() - Target);
-		Direction.Z = 0;
-		Direction = Direction.GetSafeNormal();
+			FRotator targetRotation(0.0f, target - 45.0f, 0.0f);
 
-		PlayerMesh->SetRelativeRotation(Direction.Rotation());
+			PlayerMesh->SetRelativeRotation(targetRotation);
+		}
+	}
+	else 
+	{
+		FVector worldPos, worldDir;
+
+		if (Controller->DeprojectMousePositionToWorld(worldPos, worldDir))
+		{
+			FVector start = worldPos;
+			FVector end = worldPos + worldDir * BIG_NUMBER;
+
+			FPlane Plane(FVector(0, 0, PlaneHeight), FVector::UpVector);
+			FVector Target = FMath::LinePlaneIntersection(start, end, Plane);
+
+			FVector Direction = (GunMesh->GetComponentLocation() - Target);
+			Direction.Z = 0;
+			Direction = Direction.GetSafeNormal();
+
+			PlayerMesh->SetRelativeRotation(Direction.Rotation());
+		}
 	}
 }
 
@@ -302,4 +380,14 @@ void APlayerCharacter::MoveRight(float Input)
 {
 	FVector Right = Camera->GetRightVector();
 	AddMovementInput(Right * Input);
+}
+
+void APlayerCharacter::LookForward(float Input)
+{
+	RightStickInput.Y = Input;
+}
+
+void APlayerCharacter::LookRight(float Input)
+{
+	RightStickInput.X = Input;
 }

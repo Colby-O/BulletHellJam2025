@@ -25,6 +25,12 @@ void ABoss::BeginPlay()
 	CurrentStage = EBossStage::None;
 	ShooterComp->SetBoss(this);
 	ShooterComp->Disable();
+
+	FlagForReset = false;
+	FlagForRestart = false;
+	IsReset = false;
+
+	Close(true);
 }
 
 void ABoss::Tick(float DeltaTime)
@@ -37,7 +43,19 @@ void ABoss::Tick(float DeltaTime)
 		GameView = UIManager->GetView<UGameViewWidget>();
 		GameView->MaxBossHealth = MaxHealth;
 		SetHealth(0);
-		NextStage();
+	}
+
+	if (FlagForReset) 
+	{
+		FlagForReset = false;
+		IsReset = true;
+		ResetBoss();
+	}
+	else if (FlagForRestart) 
+	{
+		FlagForRestart = false;
+		RestartBoss();
+		IsReset = false;
 	}
 
 	StageUpdate(CurrentStage);
@@ -64,12 +82,16 @@ void ABoss::OnStageChange(EBossStage Stage)
 		BeginStartStage();
 		break;
 	case Stage1:
-		BeginStage1();
+		BeginStage(Stage1ShootPattern, Stage1MaxHealthMul * MaxHealth);
 		break;
 	case Stage2:
-		BeginStage2();
+		BeginStage(Stage2ShootPattern, Stage2MaxHealthMul * MaxHealth);
 		break;
 	case Stage3:
+		BeginStage(Stage3ShootPattern, Stage3MaxHealthMul * MaxHealth);
+		break;
+	case Stage4:
+		BeginStage(Stage4ShootPattern, Stage4MaxHealthMul * MaxHealth);
 		break;
 	case End:
 		break;
@@ -80,18 +102,24 @@ void ABoss::OnStageChange(EBossStage Stage)
 
 void ABoss::StageUpdate(EBossStage Stage)
 {
+	if (IsReset) return;
+
 	switch (Stage)
 	{
 	case Start:
 		StartUpdate();
 		break;
 	case Stage1:
-		Stage1Update();
+		UpdateStage(Stage1HealthFillDuration, Stage1NumberOfEasyEnemies, Stage1NumberOfMediumEnemies, Stage1NumberOfHardEnemies);
 		break;
 	case Stage2:
-		Stage2Update();
+		UpdateStage(Stage1HealthFillDuration, Stage2NumberOfEasyEnemies, Stage2NumberOfMediumEnemies, Stage2NumberOfHardEnemies);
 		break;
 	case Stage3:
+		UpdateStage(Stage1HealthFillDuration, Stage3NumberOfEasyEnemies, Stage3NumberOfMediumEnemies, Stage3NumberOfHardEnemies);
+		break;
+	case Stage4:
+		UpdateStage(Stage1HealthFillDuration, Stage4NumberOfEasyEnemies, Stage4NumberOfMediumEnemies, Stage4NumberOfHardEnemies);
 		break;
 	case End:
 		break;
@@ -100,7 +128,7 @@ void ABoss::StageUpdate(EBossStage Stage)
 	}
 }
 
-void ABoss::StageReset(EBossStage Stage)
+void ABoss::StageRestart(EBossStage Stage)
 {
 	switch (Stage)
 	{
@@ -108,12 +136,16 @@ void ABoss::StageReset(EBossStage Stage)
 		StartStageReset();
 		break;
 	case Stage1:
-		Stage1Reset();
+		StageRestart(Stage1NumberOfEasyEnemies, Stage1NumberOfMediumEnemies, Stage1NumberOfHardEnemies);
 		break;
 	case Stage2:
-		Stage2Reset();
+		StageRestart(Stage2NumberOfEasyEnemies, Stage2NumberOfMediumEnemies, Stage2NumberOfHardEnemies);
 		break;
 	case Stage3:
+		StageRestart(Stage3NumberOfEasyEnemies, Stage3NumberOfMediumEnemies, Stage3NumberOfHardEnemies);
+		break;
+	case Stage4:
+		StageRestart(Stage4NumberOfEasyEnemies, Stage4NumberOfMediumEnemies, Stage4NumberOfHardEnemies);
 		break;
 	case End:
 		break;
@@ -129,10 +161,12 @@ void ABoss::BeginStartStage()
 		StartHealthFill(MaxHealth * InitalHealthFillPercentage, InitalHealthFillDuration);
 	}
 
+	Close(true);
+
 	Mesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 	Mesh->PlayAnimation(CloseAnimation, false);
 
-	GridManager->Spawn(EnemyPrefab, StartStageNumberOfEnemies);
+	GridManager->Spawn(EasyEnemyPrefab, StartStageNumberOfEnemies);
 
 	ShooterComp->SetShootPattern(StartStageShootPattern);
 }
@@ -142,6 +176,8 @@ void ABoss::StartUpdate()
 	if (!IsHealthFilling && CurrentHealth < MaxHealth) {
 		StartHealthFill(MaxHealth, StartStageHealthFillDuration);
 	}
+
+	UE_LOG(LogTemp, Log, TEXT("Enemies Left: %d"), ABaseEnemy::Enemies.Num());
 
 	if (ABaseEnemy::Enemies.Num() == 0) 
 	{
@@ -153,47 +189,51 @@ void ABoss::StartUpdate()
 void ABoss::StartStageReset()
 {
 	ShooterComp->Disable();
-	ABaseEnemy::DestroyAllEnemies();
 	BeginStartStage();
-	//SetHealth(0);
-	//StopHealthFill();
-	//BeginStartStage();
 }
 
-void ABoss::BeginStage1()
+void ABoss::BeginStage(TArray<FShootPattern> Pattern, float NewMaxHealth)
 {
-	IsInStage1Cooldown = false;
-	ShooterComp->SetShootPattern(Stage1ShootPattern);
+	IsInStageCooldown = false;
+	ShooterComp->SetShootPattern(Pattern);
+	int newHealth = NewMaxHealth - MaxHealth + CurrentHealth;
+	HealthAtStartOfStage = newHealth;
+	GameView->MaxBossHealth = MaxHealth;
+	SetHealth(newHealth);
 	Open();
 }
 
-void ABoss::Stage1Update()
+void ABoss::UpdateStage(float HealthFillDuration, int NumberOfEasy, int NumberOfMedium, int NumberOfHard)
 {
-	if (CurrentHealth <= PercentHealthNextStage * MaxHealth && !IsInStage1Cooldown)
+	if (CurrentHealth <= PercentHealthNextStage * MaxHealth && !IsInStageCooldown)
 	{
-		IsInStage1Cooldown = true;
-		GridManager->Spawn(EnemyPrefab, Stage1NumberOfEnemies);
+		IsInStageCooldown = true;
+
+		GridManager->Spawn(EasyEnemyPrefab, NumberOfEasy);
+		GridManager->Spawn(MediumEnemyPrefab, NumberOfMedium);
+		GridManager->Spawn(HardEnemyPrefab, NumberOfHard);
 
 		ShooterComp->Disable(true, true);
 
-		Close();
+		Close(true);
 
 		if (!IsHealthFilling && CurrentHealth < MaxHealth) {
-			StartHealthFill(MaxHealth, Stage1HealthFillDuration);
+			StartHealthFill(MaxHealth, HealthFillDuration);
 		}
 	}
 
-	if (IsInStage1Cooldown && ABaseEnemy::Enemies.Num() == 0) 
+	if (IsInStageCooldown && ABaseEnemy::Enemies.Num() == 0)
 	{
 		StopHealthFill();
 		NextStage();
 	}
 }
 
-void ABoss::Stage1Reset()
+void ABoss::StageRestart(int NumberOfEasy, int NumberOfMedium, int NumberOfHard)
 {
-	if (!IsInStage1Cooldown) 
+	if (!IsInStageCooldown) 
 	{
+		ShooterComp->Enable();
 		SetHealth(HealthAtStartOfStage);
 		Open(true);
 	}
@@ -201,40 +241,10 @@ void ABoss::Stage1Reset()
 	{
 		Close(true);
 		ShooterComp->Disable(true, true);
-		ABaseEnemy::DestroyAllEnemies();
-		GridManager->Spawn(EnemyPrefab, Stage1NumberOfEnemies);
+		GridManager->Spawn(EasyEnemyPrefab, NumberOfEasy);
+		GridManager->Spawn(MediumEnemyPrefab, NumberOfMedium);
+		GridManager->Spawn(HardEnemyPrefab, NumberOfHard);
 	}
-}
-
-void ABoss::BeginStage2()
-{
-	ShooterComp->SetShootPattern(Stage2ShootPattern);
-	Open();
-}
-
-void ABoss::Stage2Update()
-{
-
-}
-
-void ABoss::Stage2Reset()
-{
-
-}
-
-void ABoss::BeginStage3()
-{
-
-}
-
-void ABoss::Stage3Update()
-{
-
-}
-
-void ABoss::Stage3Reset()
-{
-
 }
 
 void ABoss::StartHealthFill(float To, float Duration)
@@ -266,6 +276,12 @@ void ABoss::HealthFillStep()
 	}
 }
 
+void ABoss::OnDamageEnd()
+{
+	IsTakingDamage = false;
+	SetRestMaterial();
+}
+
 void ABoss::SetHealth(float Health)
 {
 	if (!GameView) return;
@@ -275,7 +291,15 @@ void ABoss::SetHealth(float Health)
 
 void ABoss::TakeHealth(float Amount)
 {
-	if (!IsOpen && Amount >= 0) return;
+	if (!IsOpen && Amount >= 0) return; 
+	if (Amount > 0) 
+	{
+		IsTakingDamage = true;
+		SetDamagedMaterial();
+		GetWorld()->GetTimerManager().ClearTimer(DamageTimerHandle);
+		GetWorld()->GetTimerManager().SetTimer(DamageTimerHandle, this, &ABoss::OnDamageEnd, 0.1f, false);
+
+	}
 	SetHealth(CurrentHealth - Amount);
 }
 
@@ -288,7 +312,6 @@ FVector ABoss::GetDirectionToPlayer()
 void ABoss::RotateTowardsPlayer()
 {
 	if (!IsOpen && !IsStomping) return;
-
 	FVector directionToPlayer = GetDirectionToPlayer();
 	SetActorRotation(directionToPlayer.Rotation());
 }
@@ -300,14 +323,17 @@ void ABoss::Open(bool Force)
 	IsStomping = false;
 	Mesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 	Mesh->PlayAnimation(OpenAnimation, false);
+	SetOpenMaterial();
 }
 
 void ABoss::Close(bool Force)
 {
 	if (!IsOpen && !Force) return;
 	IsOpen = false;
+	GetWorld()->GetTimerManager().ClearTimer(DamageTimerHandle);
 	Mesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 	Mesh->PlayAnimation(CloseAnimation, false);
+	SetClosedMaterial();
 }
 
 void ABoss::PlayStompAnimation()
@@ -318,9 +344,18 @@ void ABoss::PlayStompAnimation()
 	IsStomping = true;
 }
 
+void ABoss::RestartBoss()
+{
+	ABaseEnemy::DestroyAllEnemies();
+	StageRestart(CurrentStage);
+}
+
 void ABoss::ResetBoss()
 {
+	SetHealth(HealthAtStartOfStage);
 	ShooterComp->ResetShooter();
-	StageReset(CurrentStage);
+	ShooterComp->Disable();
+	ABaseEnemy::DestroyAllEnemies();
+	Close(true);
 }
 

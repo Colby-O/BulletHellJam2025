@@ -54,6 +54,9 @@ protected:
 	float PlayerSpeed = 1000.0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float PlayerControllerRotationSpeed = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float JumpForce = 1000.0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
@@ -76,9 +79,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float CurrentHealth;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
+	float BossRestartDelay = 1;
+
+	FTimerHandle BossRestartHandle;
+
 	class AGameManager* GameManager;
 	class AGridManager* GridManager;
 	class AUIManager* UIManager;
+	class ABoss* Boss;
 
 	UGameViewWidget* GameView;
 
@@ -95,8 +104,13 @@ protected:
 	bool IsFiring = false;
 	float FiringRate = 0.1;
 
+	bool IsUsingGamepad;
+	FVector RightStickInput;
+
 	void MoveForward(float Input);
 	void MoveRight(float Input);
+	void LookForward(float Input);
+	void LookRight(float Input);
 	void Dash(FVector Direction);
 	bool CanDash();
 	void StopDashing();
@@ -110,11 +124,13 @@ protected:
 	void StartShoot();
 	void StopShoot();
 	void CheckTile(FVector pos);
-	void UpdatePlayerRotation();
+	void UpdatePlayerRotation(float DeltaTime);
 	void LimitSpeed();
-	void SetCursor();
+	void SetCursor(bool State = true);
 	void OnDeath();
 	void SetHealth(float Health);
+	void CheckIfUsingGamepad();
+	void RestartBoss();
 
 public:
 	void OnHit(const FBullet& Bullet);
