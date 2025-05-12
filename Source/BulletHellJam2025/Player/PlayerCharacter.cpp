@@ -136,6 +136,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindKey(EKeys::A, IE_Pressed, this, &APlayerCharacter::DashLeft);
 	PlayerInputComponent->BindKey(EKeys::D, IE_Pressed, this, &APlayerCharacter::DashRight);
 	PlayerInputComponent->BindKey(EKeys::LeftShift, IE_Pressed, this, &APlayerCharacter::DashMoveDirection);
+	PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &APlayerCharacter::DashMoveDirection);
 	PlayerInputComponent->BindKey(EKeys::Gamepad_LeftShoulder, IE_Pressed, this, &APlayerCharacter::DashMoveDirection);
 	PlayerInputComponent->BindKey(EKeys::Gamepad_LeftTrigger, IE_Pressed, this, &APlayerCharacter::DashMoveDirection);
 	PlayerInputComponent->BindKey(EKeys::LeftMouseButton, IE_Pressed, this, &APlayerCharacter::StartShoot);
