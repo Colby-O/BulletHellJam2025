@@ -145,7 +145,8 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindKey(EKeys::Gamepad_RightShoulder, IE_Released, this, &APlayerCharacter::StopShoot);
 	PlayerInputComponent->BindKey(EKeys::Gamepad_RightTrigger, IE_Released, this, &APlayerCharacter::StopShoot);
 	PlayerInputComponent->BindKey(EKeys::Escape, IE_Released, this, &APlayerCharacter::TogglePause);
-	PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Released, this, &APlayerCharacter::TogglePause);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_Special_Right, IE_Released, this, &APlayerCharacter::TogglePause);
+	PlayerInputComponent->BindKey(EKeys::Gamepad_Special_Left, IE_Released, this, &APlayerCharacter::TogglePause);
 }
 
 void APlayerCharacter::RestartBoss() 
