@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/SceneComponent.h"
 #include "BulletHellJam2025/Enemies/ShootPattern.h"
+#include "Sound/SoundMix.h"
 #include "ShooterComponent.generated.h"
 
 class ABulletManager;
@@ -28,6 +29,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "References")
 	class ABulletManager* BulletManager;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundMix* SoundMix;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* ShootSound;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool ResetRotation = true;
 

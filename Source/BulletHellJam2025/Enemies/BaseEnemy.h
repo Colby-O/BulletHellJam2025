@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Sound/SoundMix.h"
 #include "BaseEnemy.generated.h"
 
 class ATile;
@@ -50,6 +51,12 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	class UShooterComponent* ShooterComp;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* DeathSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundMix* SoundMix;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float VisionRange = 100.0;

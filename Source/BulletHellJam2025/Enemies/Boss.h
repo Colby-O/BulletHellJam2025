@@ -4,6 +4,8 @@
 #include "GameFramework/Actor.h"
 #include "BulletHellJam2025/UI/GameViewWidget.h"
 #include "BulletHellJam2025/Enemies/ShootPattern.h"
+#include "Sound/SoundMix.h"
+#include "Components/AudioComponent.h"
 #include "Boss.generated.h"
 
 UENUM(BlueprintType)
@@ -14,11 +16,12 @@ enum EBossStage {
 	Stage2,
 	Stage3,
 	Stage4,
-	End
+	End,
+	ENDPTR
 };
 
 inline EBossStage& operator++(EBossStage& b) {
-	b = static_cast<EBossStage>((static_cast<int>(b) + 1) % static_cast<int>(EBossStage::End));
+	b = static_cast<EBossStage>((static_cast<int>(b) + 1) % static_cast<int>(EBossStage::ENDPTR));
 	return b;
 }
 
@@ -38,6 +41,32 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	class UShooterComponent* ShooterComp;
+
+	UAudioComponent* BossMusicAudioComponent;
+	UAudioComponent* FightMusicAudioComponent;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Sound")
+	USoundBase* FightMusic;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Sound")
+	USoundBase* BossMusic;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* JumpSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* LandSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* HurtSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundMix* SoundMix;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float LandSoundDelay = 1.0f;
+
+	FTimerHandle SoundTimerHandler;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	TSubclassOf<AActor> EasyEnemyPrefab;
@@ -81,7 +110,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Start Stage")
 	TArray<FShootPattern> StartStageShootPattern;
 
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Start Stage")
 	float InitalHealthFillDuration;
 
@@ -89,7 +117,7 @@ public:
 	float StartStageHealthFillDuration;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Start Stage")
-	float InitalHealthFillPercentage;
+	float StartInitalHealthFillPercentage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Start Stage")
 	int StartStageNumberOfEnemies = 5;
@@ -97,9 +125,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Start Stage")
 	int StartMaxHealthMul = 1;
 
+	float BaseMaxHealth;
 
 	bool IsInStageCooldown = false;
-
+	bool FlagToRestartMusic = false;
+	bool WasStarted = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 1")
 	TArray<FShootPattern> Stage1ShootPattern;
@@ -113,6 +143,8 @@ public:
 	float Stage1HealthFillDuration;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 1")
 	float Stage1MaxHealthMul = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 1")
+	float Stage1InitalHealthFillPercentage;
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 2")
@@ -128,6 +160,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 2")
 	float Stage2MaxHealthMul = 1;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 2")
+	float Stage2InitalHealthFillPercentage;
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 3")
 	TArray<FShootPattern> Stage3ShootPattern;
@@ -141,6 +176,8 @@ public:
 	float Stage3HealthFillDuration;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 3")
 	float Stage3MaxHealthMul = 1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 3")
+	float Stage3InitalHealthFillPercentage;
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 4")
@@ -155,6 +192,10 @@ public:
 	float Stage4HealthFillDuration;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 4")
 	float Stage4MaxHealthMul = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage 4")
+	float Stage4InitalHealthFillPercentage;
+
 
 	class AGridManager* GridManager;
 	class AUIManager* UIManager;
@@ -217,8 +258,8 @@ public:
 	void StartStageReset();
 
 	void BeginStage(TArray<FShootPattern> Pattern, float NewMaxHealth);
-	void UpdateStage(float HealthFillDuration, int NumberOfEasy = 0, int NumberOfMedium = 0, int NumberOfHard = 0);
-	void StageRestart(int NumberOfEasy, int NumberOfMedium, int NumberOfHard);
+	void UpdateStage(float HealthFillDuration, int NumberOfEasy = 0, int NumberOfMedium = 0, int NumberOfHard = 0, float InitalFillAmountFactor = 0.5);
+	void StageRestart(int NumberOfEasy, int NumberOfMedium, int NumberOfHard, float InitalFillAmountFactor);
 
 	void StartHealthFill(float To, float Duration);
 	void StopHealthFill();
@@ -233,4 +274,5 @@ public:
 	void PlayStompAnimation();
 	void RestartBoss();
 	void ResetBoss();
+	void PlayLandSound();
 };

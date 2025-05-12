@@ -91,10 +91,26 @@ void UShooterComponent::Shoot(FVector Vel)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Shoot Was Called!"));
 
+	if (Player->IsPaused) return;
+
 	if (SelectedPattern.IsGridPattern() && !SelectedPattern.HasRanGridPattern) 
 	{
-		if (Boss) Boss->PlayStompAnimation();
+		if (Boss) 
+		{
+			Boss->PlayStompAnimation();
 
+			if (Boss->JumpSound && Boss->SoundMix)
+			{
+				UGameplayStatics::PushSoundMixModifier(this, Boss->SoundMix);
+				UGameplayStatics::PlaySoundAtLocation(this, Boss->JumpSound, Boss->GetActorLocation());
+				UGameplayStatics::PopSoundMixModifier(this, Boss->SoundMix);
+			}
+
+			GetWorld()->GetTimerManager().ClearTimer(Boss->SoundTimerHandler);
+			GetWorld()->GetTimerManager().SetTimer(Boss->SoundTimerHandler, Boss, &ABoss::PlayLandSound, Boss->LandSoundDelay, false);
+		}
+
+		GridManager->StopAttack();
 		if (SelectedPattern.IsRollOutGridPattern) GridManager->RollOutAttack(GetComponentLocation(), SelectedPattern.SpawnDirections, SelectedPattern.RollOutWidth, SelectedPattern.RollOutRate, SelectedPattern.TileFallDelay);
 		else if (SelectedPattern.IsMeteoriteGridPattern) GridManager->MeteoriteAttack(SelectedPattern.MeteoriteSize, SelectedPattern.MeteoriteGap, SelectedPattern.TileFallDelay);
 		else GridManager->RadiusAttack(GetComponentLocation(), (Player->GetActorLocation() - GetComponentLocation()).GetSafeNormal(), SelectedPattern.RadiusRate, SelectedPattern.TileFallDelay);
@@ -104,6 +120,13 @@ void UShooterComponent::Shoot(FVector Vel)
 
 	for (const FVector& dir : SelectedPattern.SpawnDirections)
 	{
+		if (ShootSound && SoundMix)
+		{
+			UGameplayStatics::PushSoundMixModifier(this, SoundMix);
+			UGameplayStatics::PlaySoundAtLocation(this, ShootSound, GetComponentLocation());
+			UGameplayStatics::PopSoundMixModifier(this, SoundMix);
+		}
+
 		FVector spawnLoc = GetComponentLocation() + GetComponentRotation().RotateVector(dir.GetSafeNormal()) * Offset;
 		FVector forward = GetComponentRotation().RotateVector(dir.GetSafeNormal());
 		FRotator spawnRot = forward.Rotation();

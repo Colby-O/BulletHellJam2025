@@ -17,6 +17,12 @@ void ABoss::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	BossMusicAudioComponent = UGameplayStatics::SpawnSound2D(this, BossMusic, 1.0f);
+	FightMusicAudioComponent = UGameplayStatics::SpawnSound2D(this, FightMusic, 1.0f);
+
+	BossMusicAudioComponent->bAutoDestroy = false;
+	FightMusicAudioComponent->bAutoDestroy = false;
+
 	UIManager = Cast<AUIManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AUIManager::StaticClass()));
 	GridManager = Cast<AGridManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AGridManager::StaticClass()));
 	Player = Cast<APlayerCharacter>(UGameplayStatics::GetActorOfClass(GetWorld(), APlayerCharacter::StaticClass()));
@@ -31,6 +37,11 @@ void ABoss::BeginPlay()
 	FlagForRestart = false;
 	FlagForStageReset = false;
 	IsReset = false;
+	FlagToRestartMusic = false;
+	IsInStageCooldown = false;
+	WasStarted = false;
+
+	BaseMaxHealth = MaxHealth;
 
 	Close(true);
 }
@@ -51,9 +62,10 @@ void ABoss::Tick(float DeltaTime)
 	{
 		FlagForStageReset = false;
 		CurrentStage = EBossStage::None;
-		StopHealthFill();
 		IsInStageCooldown = false;
 		HasSetupHealth = false;
+		MaxHealth = BaseMaxHealth;
+		GameView->MaxBossHealth = MaxHealth;
 		NextStage();
 		ResetBoss();
 		IsReset = true;
@@ -71,7 +83,22 @@ void ABoss::Tick(float DeltaTime)
 		IsReset = false;
 	}
 
-	if (Player->IsPaused) return;
+	if (Player->IsPaused) 
+	{
+		if (WasStarted) FlagToRestartMusic = true;
+		if (FightMusicAudioComponent) FightMusicAudioComponent->Stop();
+		if (BossMusicAudioComponent) BossMusicAudioComponent->Stop();
+		return;
+	}
+
+	WasStarted = true;
+
+	if (FlagToRestartMusic) 
+	{
+		FlagToRestartMusic = false;
+		if (BossMusicAudioComponent && !BossMusicAudioComponent->IsPlaying() && !IsInStageCooldown) BossMusicAudioComponent->Play();
+		else if (FightMusicAudioComponent && !FightMusicAudioComponent->IsPlaying() && IsInStageCooldown) FightMusicAudioComponent->Play();
+	}
 
 	StageUpdate(CurrentStage);
 	RotateTowardsPlayer();
@@ -91,6 +118,12 @@ void ABoss::OnStageChange(EBossStage Stage)
 	}
 
 	HealthAtStartOfStage = CurrentHealth;
+	IsInStageCooldown = false;
+
+	if (FightMusicAudioComponent) FightMusicAudioComponent->Stop();
+	if (BossMusicAudioComponent) BossMusicAudioComponent->Stop();
+	
+	GridManager->StopAttack();
 
 	switch (Stage)
 	{
@@ -110,6 +143,7 @@ void ABoss::OnStageChange(EBossStage Stage)
 		BeginStage(Stage4ShootPattern, Stage4MaxHealthMul * MaxHealth);
 		break;
 	case End:
+		Player->OnWin();
 		break;
 	default:
 		break;
@@ -126,16 +160,16 @@ void ABoss::StageUpdate(EBossStage Stage)
 		StartUpdate();
 		break;
 	case Stage1:
-		UpdateStage(Stage1HealthFillDuration, Stage1NumberOfEasyEnemies, Stage1NumberOfMediumEnemies, Stage1NumberOfHardEnemies);
+		UpdateStage(Stage1HealthFillDuration, Stage1NumberOfEasyEnemies, Stage1NumberOfMediumEnemies, Stage1NumberOfHardEnemies, Stage1InitalHealthFillPercentage);
 		break;
 	case Stage2:
-		UpdateStage(Stage1HealthFillDuration, Stage2NumberOfEasyEnemies, Stage2NumberOfMediumEnemies, Stage2NumberOfHardEnemies);
+		UpdateStage(Stage1HealthFillDuration, Stage2NumberOfEasyEnemies, Stage2NumberOfMediumEnemies, Stage2NumberOfHardEnemies, Stage2InitalHealthFillPercentage);
 		break;
 	case Stage3:
-		UpdateStage(Stage1HealthFillDuration, Stage3NumberOfEasyEnemies, Stage3NumberOfMediumEnemies, Stage3NumberOfHardEnemies);
+		UpdateStage(Stage1HealthFillDuration, Stage3NumberOfEasyEnemies, Stage3NumberOfMediumEnemies, Stage3NumberOfHardEnemies, Stage3InitalHealthFillPercentage);
 		break;
 	case Stage4:
-		UpdateStage(Stage1HealthFillDuration, Stage4NumberOfEasyEnemies, Stage4NumberOfMediumEnemies, Stage4NumberOfHardEnemies);
+		UpdateStage(Stage1HealthFillDuration, Stage4NumberOfEasyEnemies, Stage4NumberOfMediumEnemies, Stage4NumberOfHardEnemies, Stage4InitalHealthFillPercentage);
 		break;
 	case End:
 		break;
@@ -157,16 +191,16 @@ void ABoss::StageRestart(EBossStage Stage)
 		StartStageReset();
 		break;
 	case Stage1:
-		StageRestart(Stage1NumberOfEasyEnemies, Stage1NumberOfMediumEnemies, Stage1NumberOfHardEnemies);
+		StageRestart(Stage1NumberOfEasyEnemies, Stage1NumberOfMediumEnemies, Stage1NumberOfHardEnemies, Stage1InitalHealthFillPercentage);
 		break;
 	case Stage2:
-		StageRestart(Stage2NumberOfEasyEnemies, Stage2NumberOfMediumEnemies, Stage2NumberOfHardEnemies);
+		StageRestart(Stage2NumberOfEasyEnemies, Stage2NumberOfMediumEnemies, Stage2NumberOfHardEnemies, Stage2InitalHealthFillPercentage);
 		break;
 	case Stage3:
-		StageRestart(Stage3NumberOfEasyEnemies, Stage3NumberOfMediumEnemies, Stage3NumberOfHardEnemies);
+		StageRestart(Stage3NumberOfEasyEnemies, Stage3NumberOfMediumEnemies, Stage3NumberOfHardEnemies, Stage3InitalHealthFillPercentage);
 		break;
 	case Stage4:
-		StageRestart(Stage4NumberOfEasyEnemies, Stage4NumberOfMediumEnemies, Stage4NumberOfHardEnemies);
+		StageRestart(Stage4NumberOfEasyEnemies, Stage4NumberOfMediumEnemies, Stage4NumberOfHardEnemies, Stage4InitalHealthFillPercentage);
 		break;
 	case End:
 		break;
@@ -177,9 +211,13 @@ void ABoss::StageRestart(EBossStage Stage)
 
 void ABoss::BeginStartStage()
 {
-	if (!IsHealthFilling && CurrentHealth < MaxHealth * InitalHealthFillPercentage)
+	IsInStageCooldown = true;
+	FightMusicAudioComponent->Play();
+	FightMusicAudioComponent->FadeIn(2.0f, 1.0f);
+
+	if (CurrentHealth < MaxHealth * StartInitalHealthFillPercentage)
 	{
-		StartHealthFill(MaxHealth * InitalHealthFillPercentage, InitalHealthFillDuration);
+		StartHealthFill(MaxHealth * StartInitalHealthFillPercentage, InitalHealthFillDuration);
 	}
 
 	Close(true);
@@ -215,20 +253,29 @@ void ABoss::StartStageReset()
 
 void ABoss::BeginStage(TArray<FShootPattern> Pattern, float NewMaxHealth)
 {
+	BossMusicAudioComponent->Play();
+	FightMusicAudioComponent->FadeOut(2.0f, 0.0f);
+	BossMusicAudioComponent->FadeIn(2.0f, 1.0f);
+
 	IsInStageCooldown = false;
 	ShooterComp->SetShootPattern(Pattern);
 	int newHealth = NewMaxHealth - MaxHealth + CurrentHealth;
 	HealthAtStartOfStage = newHealth;
-	GameView->MaxBossHealth = MaxHealth;
+	MaxHealth = NewMaxHealth;
+	GameView->MaxBossHealth = NewMaxHealth;
 	SetHealth(newHealth);
-	Open();
+	Open(IsStomping);
 }
 
-void ABoss::UpdateStage(float HealthFillDuration, int NumberOfEasy, int NumberOfMedium, int NumberOfHard)
+void ABoss::UpdateStage(float HealthFillDuration, int NumberOfEasy, int NumberOfMedium, int NumberOfHard, float InitalFillAmountFactor)
 {
-	if (CurrentHealth <= PercentHealthNextStage * MaxHealth && !IsInStageCooldown)
+	if (CurrentHealth < ((CurrentStage == EBossStage::Stage4) ? 0.01 : PercentHealthNextStage) * MaxHealth && !IsInStageCooldown)
 	{
 		IsInStageCooldown = true;
+
+		FightMusicAudioComponent->Play();
+		BossMusicAudioComponent->FadeOut(2.0f, 0.0f);
+		FightMusicAudioComponent->FadeIn(2.0f, 1.0f);
 
 		GridManager->Spawn(EasyEnemyPrefab, NumberOfEasy);
 		GridManager->Spawn(MediumEnemyPrefab, NumberOfMedium);
@@ -236,30 +283,51 @@ void ABoss::UpdateStage(float HealthFillDuration, int NumberOfEasy, int NumberOf
 
 		ShooterComp->Disable(true, true);
 
+		GridManager->StopAttack();
+		GridManager->ResetGrid();
+
 		Close(true);
 
-		if (!IsHealthFilling && CurrentHealth < MaxHealth) {
-			StartHealthFill(MaxHealth, HealthFillDuration);
+		if (CurrentHealth < MaxHealth * InitalFillAmountFactor) 
+		{
+			StartHealthFill(MaxHealth * InitalFillAmountFactor, InitalHealthFillDuration);
 		}
 	}
 
-	if (IsInStageCooldown && ABaseEnemy::Enemies.Num() == 0)
+	if (IsInStageCooldown) 
 	{
-		StopHealthFill();
-		NextStage();
+		if (!IsHealthFilling && CurrentHealth < MaxHealth) 
+		{
+			StartHealthFill(MaxHealth, HealthFillDuration);
+		}
+
+		if (ABaseEnemy::Enemies.Num() == 0)
+		{
+			StopHealthFill();
+			NextStage();
+		}
 	}
 }
 
-void ABoss::StageRestart(int NumberOfEasy, int NumberOfMedium, int NumberOfHard)
+void ABoss::StageRestart(int NumberOfEasy, int NumberOfMedium, int NumberOfHard, float InitalFillAmountFactor)
 {
 	if (!IsInStageCooldown) 
 	{
+		BossMusicAudioComponent->Play();
+
 		ShooterComp->Enable();
 		SetHealth(HealthAtStartOfStage);
 		Open(true);
 	}
 	else 
 	{
+		FightMusicAudioComponent->Play();
+
+		if (CurrentHealth < MaxHealth * InitalFillAmountFactor)
+		{
+			StartHealthFill(MaxHealth * InitalFillAmountFactor, InitalHealthFillDuration);
+		}
+
 		Close(true);
 		ShooterComp->Disable(true, true);
 		GridManager->Spawn(EasyEnemyPrefab, NumberOfEasy);
@@ -316,6 +384,12 @@ void ABoss::TakeHealth(float Amount)
 	if (Amount > 0) 
 	{
 		IsTakingDamage = true;
+		if (HurtSound && SoundMix)
+		{
+			UGameplayStatics::PushSoundMixModifier(this, SoundMix);
+			UGameplayStatics::PlaySoundAtLocation(this, HurtSound, GetActorLocation());
+			UGameplayStatics::PopSoundMixModifier(this, SoundMix);
+		}
 		SetDamagedMaterial();
 		GetWorld()->GetTimerManager().ClearTimer(DamageTimerHandle);
 		GetWorld()->GetTimerManager().SetTimer(DamageTimerHandle, this, &ABoss::OnDamageEnd, 0.1f, false);
@@ -361,7 +435,7 @@ void ABoss::PlayStompAnimation()
 {
 	Mesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 	Mesh->PlayAnimation(StompAnimation, false);
-	IsOpen = false;
+	IsOpen = true;
 	IsStomping = true;
 }
 
@@ -373,11 +447,25 @@ void ABoss::RestartBoss()
 
 void ABoss::ResetBoss()
 {
-	SetHealth(HealthAtStartOfStage);
+	StopHealthFill();
+	if (BossMusicAudioComponent) BossMusicAudioComponent->Stop();
+	if (FightMusicAudioComponent) FightMusicAudioComponent->Stop();
+	if (!IsInStageCooldown) SetHealth(HealthAtStartOfStage);
+	else SetHealth(0);
 	ShooterComp->ResetShooter();
 	ShooterComp->Disable(true);
 	ShooterComp->BulletManager->IsMarkedToRemoveBossBullets = true;
 	ABaseEnemy::DestroyAllEnemies();
 	Close(true);
+}
+
+void ABoss::PlayLandSound()
+{
+	if (LandSound && SoundMix)
+	{
+		UGameplayStatics::PushSoundMixModifier(this, SoundMix);
+		UGameplayStatics::PlaySoundAtLocation(this, LandSound, GetActorLocation());
+		UGameplayStatics::PopSoundMixModifier(this, SoundMix);
+	}
 }
 

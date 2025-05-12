@@ -35,6 +35,20 @@ public:
 	int TileSize = 100;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
+	TArray<TSubclassOf<AActor>> PowerupPrefabs;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
+	float PowerupSpawnRate;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
+	float PowerupSpawnChance;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
+	float PowerupMaxCount = 2;
+
+	FTimerHandle PowerSpawnTimerHandle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
 	float ViewDist = 3000;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tiles")
@@ -68,6 +82,7 @@ public:
 	void ResetGrid();
 	void Pause();
 	void Resume();
+	void SpawnPowerup();
 
 	FVector GetRandomLocation();
 	void Spawn(TSubclassOf<AActor> Actor, int Number = 1);

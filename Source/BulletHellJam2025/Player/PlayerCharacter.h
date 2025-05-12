@@ -5,6 +5,7 @@
 #include "BulletHellJam2025/UI/GameViewWidget.h"
 #include "BulletHellJam2025/UI/MainMenuView.h"
 #include "BulletHellJam2025/Enemies/Bullet.h"
+#include "Sound/SoundMix.h"
 #include "PlayerCharacter.generated.h"
 
 UCLASS()
@@ -35,6 +36,18 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "References")
 	class UShooterComponent* ShooterComp;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* DashSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* DeathSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* WinSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundMix* SoundMix;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	bool EnableTileFall = true;
@@ -82,6 +95,13 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float BossRestartDelay = 1;
+
+	float CurrentFireRate;
+	FTimerHandle FireRateTimerHandle;
+
+	float CurrentDamage;
+	float BaseDamage;
+	FTimerHandle DamageTimerHandle;
 
 	FTimerHandle BossRestartHandle;
 
@@ -132,14 +152,19 @@ protected:
 	void CheckIfUsingGamepad();
 	void RestartBoss();
 	void TogglePause();
+	void RevertFiringRate();
+	void RevertDamage();
 
 public:
 	bool IsPaused = true;
 
 	void StartGame();
+	void OnWin();
 	void PauseGame();
 	void ResumeGame();
 	void ReturnToMenu();
+	void IncreaseFireRateFor(float Mul, float Duration);
+	void IncreaseDamageFor(float Mul, float Duration);
 	void OnHit(const FBullet& Bullet);
 	void TakeHealth(float Amount);
 	void ResetPlayer();

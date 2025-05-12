@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Sound/SoundMix.h"
 #include "Tile.generated.h"
 
 UCLASS()
@@ -21,6 +22,12 @@ public:
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	class AGridManager* GridManager;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundBase* FallSound;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundMix* SoundMix;
 
 	UFUNCTION(BlueprintCallable)
 	void TriggerFall(float FallDelayOverride = -1);

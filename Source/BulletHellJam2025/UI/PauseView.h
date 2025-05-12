@@ -4,9 +4,6 @@
 #include "Blueprint/UserWidget.h"
 #include "PauseView.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class BULLETHELLJAM2025_API UPauseView : public UUserWidget
 {

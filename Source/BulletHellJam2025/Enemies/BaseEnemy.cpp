@@ -344,6 +344,13 @@ void ABaseEnemy::CheckForDeath()
 	ATile* curTile = GridManager->GetTileAt(GridManager->WorldToGrid(GetActorLocation()));
 	if (!curTile || curTile->HasFallen)
 	{
+		if (DeathSound && SoundMix)
+		{
+			UGameplayStatics::PushSoundMixModifier(this, SoundMix);
+			UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
+			UGameplayStatics::PopSoundMixModifier(this, SoundMix);
+		}
+
 		DestroyEnemy(this);
 		if (ClosestEnemy)
 		{

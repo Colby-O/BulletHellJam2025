@@ -69,6 +69,12 @@ void ATile::TriggerFall(float FallDelayOverride)
 void ATile::StartFall()
 {
 	HasFallen = true;
+	if (FallSound && SoundMix)
+	{
+		UGameplayStatics::PushSoundMixModifier(this, SoundMix);
+		UGameplayStatics::PlaySoundAtLocation(this, FallSound, GetActorLocation());
+		UGameplayStatics::PopSoundMixModifier(this, SoundMix);
+	}
 	GetWorld()->GetTimerManager().SetTimer(TimerHandler, this, &ATile::Fall, FallTime / 100.0, true);
 }
 

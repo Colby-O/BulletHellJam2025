@@ -6,6 +6,7 @@
 #include "BulletHellJam2025/Grid/Tile.h"
 #include "BulletHellJam2025/Core/Vector2Int.h"
 #include "BulletHellJam2025/UI/PauseView.h"
+#include "BulletHellJam2025/UI/EndView.h"
 #include "BulletHellJam2025/Enemies/ShooterComponent.h"
 #include "Camera/CameraComponent.h"
 #include "BulletHellJam2025/UI/UIManager.h"
@@ -67,6 +68,10 @@ void APlayerCharacter::BeginPlay()
 	Controller = Cast<APlayerController>(GetController());
 
 	SetCursor();
+
+	CurrentFireRate = FiringRate;
+	BaseDamage = ShooterComp->Damage;
+	CurrentDamage = BaseDamage;
 
 	StartTransform = GetActorTransform();
 	HasMoved = false;
@@ -156,6 +161,44 @@ void APlayerCharacter::TogglePause()
 	else PauseGame();
 }
 
+void APlayerCharacter::RevertFiringRate()
+{
+	GetWorld()->GetTimerManager().ClearTimer(FireRateTimerHandle);
+	CurrentFireRate = FiringRate;
+	if (IsFiring)
+	{
+		StopShoot();
+		StartShoot();
+	}
+}
+
+void APlayerCharacter::RevertDamage()
+{
+	GetWorld()->GetTimerManager().ClearTimer(DamageTimerHandle);
+	CurrentDamage = BaseDamage;
+	ShooterComp->Damage = CurrentDamage;
+}
+
+void APlayerCharacter::IncreaseFireRateFor(float Mul, float Duration)
+{
+	GetWorld()->GetTimerManager().ClearTimer(FireRateTimerHandle);
+	CurrentFireRate = Mul * FiringRate;
+	if (IsFiring)
+	{
+		StopShoot();
+		StartShoot();
+	}
+	GetWorld()->GetTimerManager().SetTimer(FireRateTimerHandle, this, &APlayerCharacter::RevertFiringRate, Duration, false);
+}
+
+void APlayerCharacter::IncreaseDamageFor(float Mul, float Duration)
+{
+	GetWorld()->GetTimerManager().ClearTimer(DamageTimerHandle);
+	CurrentDamage = Mul * BaseDamage;
+	ShooterComp->Damage = CurrentDamage;
+	GetWorld()->GetTimerManager().SetTimer(DamageTimerHandle, this, &APlayerCharacter::RevertDamage, Duration, false);
+}
+
 void APlayerCharacter::LimitSpeed()
 {
 	if (!GetCharacterMovement()->IsMovingOnGround() && !IsDashing)
@@ -185,6 +228,12 @@ void APlayerCharacter::SetCursor(bool State)
 
 void APlayerCharacter::OnDeath()
 {
+	if (DeathSound && SoundMix)
+	{
+		UGameplayStatics::PushSoundMixModifier(this, SoundMix);
+		UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
+		UGameplayStatics::PopSoundMixModifier(this, SoundMix);
+	}
 	GameManager->RestartGame();
 }
 
@@ -235,6 +284,8 @@ void APlayerCharacter::TakeHealth(float Amount)
 void APlayerCharacter::ResetPlayer()
 {
 	GetWorld()->GetTimerManager().ClearTimer(BossRestartHandle);
+	RevertDamage();
+	RevertFiringRate();
 	SetHealth(MaxHealth);
 	IsDashing = false;
 	HasMoved = false;
@@ -341,7 +392,8 @@ void APlayerCharacter::StartShoot()
 	if (IsFiring) return;
 	IsFiring = true;
 	ShooterComp->Disable(true);
-	ShooterComp->SelectedPattern.FireRate = FiringRate;
+	ShooterComp->SelectedPattern.FireRate = CurrentFireRate;
+	ShooterComp->Damage = CurrentDamage;
 	ShooterComp->Enable(true);
 }
 
@@ -362,6 +414,13 @@ void APlayerCharacter::Dash(FVector Direction)
 {
 	if (CanDash()) 
 	{
+		if (DashSound && SoundMix)
+		{
+			UGameplayStatics::PushSoundMixModifier(this, SoundMix);
+			UGameplayStatics::PlaySoundAtLocation(this, DashSound, GetActorLocation());
+			UGameplayStatics::PopSoundMixModifier(this, SoundMix);
+		}
+
 		IsDashing = true;
 		FVector normal = Direction.GetSafeNormal();
 		LaunchCharacter(FVector(normal.X, normal.Y, 0) * DashForce, true, true);
@@ -394,9 +453,25 @@ void APlayerCharacter::StartGame()
 	UIManager->ShowView<UGameViewWidget>();
 }
 
+void APlayerCharacter::OnWin()
+{
+	if (WinSound && SoundMix)
+	{
+		UGameplayStatics::PushSoundMixModifier(this, SoundMix);
+		UGameplayStatics::PlaySoundAtLocation(this, WinSound, GetActorLocation());
+		UGameplayStatics::PopSoundMixModifier(this, SoundMix);
+	}
+
+	IsPaused = true;
+	UIManager->HideAll();
+	UIManager->ShowView<UEndView>();
+	GridManager->Pause();
+}
+
 void APlayerCharacter::PauseGame()
 {
 	if (IsPaused) return;
+	GridManager->StopAttack();
 	IsPaused = true;
 	UIManager->HideAll();
 	UIManager->ShowView<UPauseView>();

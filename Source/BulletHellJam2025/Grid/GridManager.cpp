@@ -1,5 +1,6 @@
 #include "BulletHellJam2025/Grid/GridManager.h"
 #include "BulletHellJam2025/Grid/Tile.h"
+#include "BulletHellJam2025/Powerups/Powerup.h"
 #include <Kismet/GameplayStatics.h>
 #include "GameFramework/Character.h"
 
@@ -13,6 +14,10 @@ void AGridManager::BeginPlay()
 	Super::BeginPlay();
 
 	if (!DisableMap) GenerateGrid();
+
+	APowerup::Count = 0;
+
+	GetWorld()->GetTimerManager().SetTimer(PowerSpawnTimerHandle, this, &AGridManager::SpawnPowerup, PowerupSpawnRate, true);
 }
 
 void AGridManager::Tick(float DeltaTime)
@@ -135,6 +140,11 @@ void AGridManager::Resume()
 	}
 }
 
+void AGridManager::SpawnPowerup()
+{
+	if (APowerup::Count < PowerupMaxCount && FMath::FRand() < PowerupSpawnChance) Spawn(PowerupPrefabs[FMath::RandRange(0, PowerupPrefabs.Num() - 1)]);
+}
+
 FVector AGridManager::GetRandomLocation()
 {
 	TArray<ATile*> tileList;
@@ -146,7 +156,7 @@ FVector AGridManager::GetRandomLocation()
 	{
 		int randomIndex = FMath::RandRange(0, tileList.Num() - 1);
 
-		if (!tileList[randomIndex]->IsDisabled) return tileList[randomIndex]->GetActorLocation();
+		if (!NearTileWithState(&ATile::IsDisabled, WorldToGrid(tileList[randomIndex]->GetActorLocation()))) return tileList[randomIndex]->GetActorLocation();
 	}
 
 	return FVector();
