@@ -376,10 +376,6 @@ void APlayerCharacter::DashMoveDirection()
 void APlayerCharacter::AddDashCopy()
 {
 	if (!GameManager || !GameManager->PlayerDashInstancedMesh) return;
-	//FTransform transform;
-	//transform.SetLocation(PlayerMesh->GetRelativeLocation());
-	//transform.SetRotation(PlayerMesh->GetRelativeRotation().Quaternion());
-	//transform.SetScale3D(PlayerMesh->GetRelativeScale3D());
 	GameManager->PlayerDashInstancedMesh->AddInstance(PlayerMesh->GetComponentTransform());
 }
 
