@@ -86,7 +86,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 	if (!HasMoved)
 	{
-		HasMoved = !GetActorLocation().Equals(StartTransform.GetLocation(), 1.0f);
+		HasMoved = !GetActorLocation().Equals(StartTransform.GetLocation(), 75.0f);
 		if (HasMoved) 
 		{
 			GetWorld()->GetTimerManager().ClearTimer(BossRestartHandle);
@@ -131,10 +131,10 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindAxis("MoveRight", this, &APlayerCharacter::MoveRight);
 	PlayerInputComponent->BindAxis("LookForward", this, &APlayerCharacter::LookForward);
 	PlayerInputComponent->BindAxis("LookRight", this, &APlayerCharacter::LookRight);
-	PlayerInputComponent->BindKey(EKeys::W, IE_Pressed, this, &APlayerCharacter::DashForward);
-	PlayerInputComponent->BindKey(EKeys::S, IE_Pressed, this, &APlayerCharacter::DashBackward);
-	PlayerInputComponent->BindKey(EKeys::A, IE_Pressed, this, &APlayerCharacter::DashLeft);
-	PlayerInputComponent->BindKey(EKeys::D, IE_Pressed, this, &APlayerCharacter::DashRight);
+	//PlayerInputComponent->BindKey(EKeys::W, IE_Pressed, this, &APlayerCharacter::DashForward);
+	//PlayerInputComponent->BindKey(EKeys::S, IE_Pressed, this, &APlayerCharacter::DashBackward);
+	//PlayerInputComponent->BindKey(EKeys::A, IE_Pressed, this, &APlayerCharacter::DashLeft);
+	//PlayerInputComponent->BindKey(EKeys::D, IE_Pressed, this, &APlayerCharacter::DashRight);
 	PlayerInputComponent->BindKey(EKeys::LeftShift, IE_Pressed, this, &APlayerCharacter::DashMoveDirection);
 	PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &APlayerCharacter::DashMoveDirection);
 	PlayerInputComponent->BindKey(EKeys::Gamepad_LeftShoulder, IE_Pressed, this, &APlayerCharacter::DashMoveDirection);
